@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#14161a">
+<title>ALERTA CERCA</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--red:#d62828;--org:#ff6b35;--bg:#f3f4f6;--card:#fff;--tx:#14161a;--mut:#6b7280;--line:#e5e7eb;--ok:#15803d}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#1b1d22;color:var(--tx)}
+button{font:inherit;cursor:pointer}
+.app{max-width:440px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden}
+header{background:#14161a;color:#fff;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top));display:flex;align-items:center;gap:10px}
+.logo{font-weight:800;font-size:18px;letter-spacing:.5px}
+.logo span{color:var(--org)}
+.pill{font-size:11px;color:#a7f3c0;display:flex;align-items:center;gap:5px;margin-top:2px}
+.pill i{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:blink 1.6s infinite}
+.hbtn{margin-left:auto;background:#2a2d34;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:18px}
+main{flex:1;position:relative;overflow:hidden}
+.view{position:absolute;inset:0;overflow-y:auto;display:none;padding:16px}
+.view.on{display:block}
+#view-mapa{padding:0;overflow:hidden}
+#map{position:absolute;inset:0;background:#dde3ea}
+.nomap{display:flex;height:100%;align-items:center;justify-content:center;color:var(--mut);padding:24px;text-align:center}
+.float{position:absolute;left:12px;right:12px;bottom:12px;z-index:500;background:#fff;border-radius:16px;padding:12px;box-shadow:0 6px 24px rgba(0,0,0,.18)}
+.float .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-size:13px;color:var(--mut)}
+.float .row b{color:var(--tx);font-size:15px}
+.btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font-weight:700;font-size:15px;background:var(--red);color:#fff}
+.btn.sec{background:#eef0f3;color:var(--tx)}
+.btn.ok{background:var(--ok)}
+.btn.out{background:#fff;border:1.5px solid var(--line);color:var(--tx)}
+.btn+.btn{margin-top:8px}
+.speed{font-size:11px;color:var(--mut);text-align:center;margin-top:8px}
+.top-chip{position:absolute;top:12px;left:12px;z-index:500;background:rgba(20,22,26,.85);color:#fff;font-size:12px;padding:6px 10px;border-radius:20px}
+h2.t{font-size:20px;margin-bottom:4px}
+p.s{color:var(--mut);font-size:13px;margin-bottom:14px}
+.card{background:var(--card);border-radius:14px;padding:12px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start;border-left:5px solid var(--red);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card .ic{font-size:26px;line-height:1}
+.card .bd{flex:1;min-width:0}
+.card h4{font-size:15px}
+.card .m{font-size:12px;color:var(--mut);margin-top:3px}
+.card.closed{opacity:.55}
+.badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.bdg{font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:6px;background:#eef0f3;color:#374151;text-transform:uppercase;letter-spacing:.3px}
+.bdg.v{background:#dcfce7;color:#166534}
+.bdg.u{background:#fef3c7;color:#92400e}
+.bdg.c{background:#fee2e2;color:#991b1b}
+.bdg.a{background:#ffedd5;color:#9a3412}
+.bdg.m{background:#dbeafe;color:#1e40af}
+.bdg.r{background:#e5e7eb;color:#374151}
+.empty{text-align:center;color:var(--mut);padding:40px 10px;font-size:14px}
+label.l{display:block;font-size:13px;font-weight:700;margin:14px 0 6px}
+select,textarea,input[type=text]{width:100%;font:inherit;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:#fff}
+textarea{min-height:80px;resize:vertical}
+.photo{display:flex;align-items:center;gap:10px;background:#fff;border:1.5px dashed #cbd0d8;border-radius:12px;padding:12px;font-size:14px;color:var(--mut)}
+.photo img{width:54px;height:54px;object-fit:cover;border-radius:8px}
+.loc{background:#eef6ff;color:#1e40af;border-radius:12px;padding:10px 12px;font-size:13px;margin-top:14px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:14px 0;color:#374151}
+.chk input{margin-top:3px;width:18px;height:18px}
+.panic-wrap{display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:8px}
+.pbtn{position:relative;width:200px;height:200px;margin:18px 0;border:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff5a5a,#b80f0f);color:#fff;font-size:28px;font-weight:900;box-shadow:0 10px 30px rgba(214,40,40,.45);touch-action:none;user-select:none;-webkit-user-select:none}
+.pbtn small{display:block;font-size:12px;font-weight:600;opacity:.9;margin-top:4px}
+.pbtn svg{position:absolute;inset:-10px;width:220px;height:220px;transform:rotate(-90deg);pointer-events:none}
+.pbtn circle{fill:none;stroke:#ff6b35;stroke-width:8;stroke-linecap:round;stroke-dasharray:660;stroke-dashoffset:660}
+.pbtn.hold circle{stroke-dashoffset:0;transition:stroke-dashoffset 2s linear}
+.contacts{width:100%;text-align:left}
+.ct{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:14px}
+.ct .av{width:34px;height:34px;border-radius:50%;background:#eef0f3;display:flex;align-items:center;justify-content:center;font-weight:700}
+.ct .st{margin-left:auto;font-size:12px;color:var(--mut)}
+.ct .st.ok{color:var(--ok);font-weight:700}
+.panic-on{background:#7f0d0d;color:#fff;border-radius:18px;padding:18px;width:100%;margin-bottom:14px;animation:pbg 1.4s infinite}
+.panic-on h3{font-size:20px}
+.panic-on .tm{font-size:40px;font-weight:900;font-variant-numeric:tabular-nums;margin:6px 0}
+.panic-on .sm{font-size:12px;opacity:.85}
+nav{display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;padding:8px 0 10px;font-size:11px;color:var(--mut);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+nav button .e{font-size:22px;line-height:1.1}
+nav button.on{color:var(--red);font-weight:700}
+nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px}
+.me-dot{width:22px;height:22px;border-radius:50%;background:#2563eb;border:4px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25)}
+.me-dot.panic{background:#d62828;box-shadow:0 0 0 8px rgba(214,40,40,.35);animation:blink 1s infinite}
+.pin{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.pin.closed{filter:grayscale(1);opacity:.6}
+.ov{position:absolute;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;padding:18px}
+.ov.hidden,.shade.hidden{display:none}
+.ov-bg{position:absolute;inset:0;animation:flash .7s infinite alternate}
+.ov-box{position:relative;background:#fff;border-radius:20px;padding:20px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4);animation:pop .3s}
+.ov-top{font-weight:900;letter-spacing:2px;font-size:13px;padding:6px 10px;border-radius:8px;color:#fff;display:inline-block}
+.ov-ic{font-size:52px;margin:10px 0 4px}
+.ov-box h2{font-size:22px;line-height:1.2}
+.ov-meta{color:var(--mut);font-size:13px;margin:6px 0}
+.ov-box p{font-size:14px;margin:10px 0 14px;color:#374151}
+.ov-box .badges{justify-content:center;margin-bottom:14px}
+.shade{position:absolute;inset:0;z-index:2500;background:rgba(0,0,0,.45);display:flex;align-items:flex-end}
+.sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:10px 16px 20px;max-height:88%;overflow-y:auto;animation:up .25s}
+.grip{width:40px;height:5px;border-radius:3px;background:#d1d5db;margin:0 auto 12px}
+.sheet h3{font-size:19px;display:flex;gap:8px;align-items:center}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
+.kv div{background:#f6f7f9;border-radius:10px;padding:8px 10px;font-size:11px;color:var(--mut)}
+.kv b{display:block;font-size:14px;color:var(--tx);margin-top:2px}
+.ph{height:120px;border-radius:12px;background:#eef0f3;display:flex;align-items:center;justify-content:center;font-size:44px;margin:10px 0;overflow:hidden}
+.ph img{width:100%;height:100%;object-fit:cover}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.chips button{border:1.5px solid var(--line);background:#fff;border-radius:12px;padding:12px 8px;font-size:13px;font-weight:600;text-align:left}
+.chips button span{font-size:20px;margin-right:4px}
+.toast{position:absolute;left:12px;right:12px;top:12px;z-index:4000;background:#14161a;color:#fff;border-radius:12px;padding:12px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);transform:translateY(-140%);transition:transform .3s}
+.toast.on{transform:none}
+@keyframes blink{50%{opacity:.35}}
+@keyframes flash{from{opacity:.95}to{opacity:.55}}
+@keyframes pop{from{transform:scale(.85);opacity:0}}
+@keyframes up{from{transform:translateY(100%)}}
+@keyframes pbg{50%{background:#a51111}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <div class="logo">ALERTA <span>CERCA</span></div>
+      <div class="pill"><i></i><span id="locTxt">Ubicación activa · Lázaro Cárdenas</span></div>
+    </div>
+    <button class="hbtn" id="muteBtn" aria-label="Sonido">🔊</button>
+  </header>
+
+  <main>
+    <!-- MAPA -->
+    <section class="view on" id="view-mapa">
+      <div id="map"></div>
+      <div class="top-chip" id="nearChip">0 alertas activas cerca</div>
+      <div class="float">
+        <div class="row"><span>Tu radio de interés</span><b>hasta 10 km</b></div>
+        <button class="btn" id="simBtn">⚡ Simular alerta</button>
+        <div class="speed">Demo: el radio dinámico se amplía cada 10 s (equivale a ~15 min reales)</div>
+      </div>
+    </section>
+
+    <!-- ALERTAS -->
+    <section class="view" id="view-alertas">
+      <h2 class="t">Alertas</h2>
+      <p class="s">Ordenadas por cercanía. Toca una para ver detalles.</p>
+      <div id="list"></div>
+    </section>
+
+    <!-- REPORTAR -->
+    <section class="view" id="view-reportar">
+      <h2 class="t">Reportar un acontecimiento</h2>
+      <p class="s">Tu reporte se publicará como <b>no confirmado</b> hasta que la comunidad o una autoridad lo valide.</p>
+      <form id="repForm">
+        <label class="l">¿Qué está pasando?</label>
+        <select id="repCat" required></select>
+        <label class="l">Descripción</label>
+        <textarea id="repDesc" placeholder="Características, ropa, placas, dirección hacia donde se fue..." required></textarea>
+        <label class="l">Fotografía (opcional)</label>
+        <label class="photo"><input type="file" id="repPhoto" accept="image/*" capture="environment" hidden><span id="phPrev">📷</span><span>Tomar o subir foto</span></label>
+        <div class="loc" id="repLoc">📍 Se usará tu ubicación actual</div>
+        <label class="chk"><input type="checkbox" required> <span>Confirmo que la información es verdadera. Los reportes falsos se sancionan y pueden bloquear mi cuenta.</span></label>
+        <button class="btn" type="submit">Enviar alerta</button>
+      </form>
+    </section>
+
+    <!-- PÁNICO -->
+    <section class="view" id="view-panico">
+      <div class="panic-wrap" id="panicIdle">
+        <h2 class="t">Botón de pánico</h2>
+        <p class="s">Mantén presionado 2 segundos. Se compartirá tu ubicación en vivo con tus contactos y se alertará a usuarios en 500 m.</p>
+        <button class="pbtn" id="pbtn"><svg viewBox="0 0 220 220"><circle cx="110" cy="110" r="105"/></svg>SOS<small>Mantén presionado</small></button>
+        <div class="contacts" id="ctIdle"></div>
+      </div>
+      <div class="panic-wrap" id="panicActive" style="display:none">
+        <div class="panic-on">
+          <h3>🆘 Pánico activo</h3>
+          <div class="sm">Compartiendo tu ubicación en tiempo real</div>
+          <div class="tm" id="pTimer">00:00</div>
+          <div class="sm" id="pCoords">—</div>
+          <div class="sm" id="pUpd" style="margin-top:4px">0 actualizaciones enviadas</div>
+        </div>
+        <div class="contacts" id="ctActive"></div>
+        <a class="btn out" href="tel:911" style="text-align:center;text-decoration:none;margin-top:6px">📞 Llamar al 911</a>
+        <button class="btn ok" id="safeBtn" style="margin-top:8px">✅ Estoy a salvo</button>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button data-v="mapa" class="on"><span class="e">🗺️</span>Mapa</button>
+    <button data-v="alertas"><span class="e">🔔</span>Alertas<span class="cnt" id="navCnt" style="display:none">0</span></button>
+    <button data-v="reportar"><span class="e">➕</span>Reportar</button>
+    <button data-v="panico"><span class="e">🆘</span>Pánico</button>
+  </nav>
+
+  <!-- Alerta tipo sísmica -->
+  <div class="ov hidden" id="ov">
+    <div class="ov-bg" id="ovBg"></div>
+    <div class="ov-box">
+      <div class="ov-top" id="ovTop">⚠ ALERTA CERCA DE TI</div>
+      <div class="ov-ic" id="ovIc"></div>
+      <h2 id="ovT"></h2>
+      <div class="ov-meta" id="ovMeta"></div>
+      <p id="ovD"></p>
+      <div class="badges" id="ovB"></div>
+      <button class="btn" id="ovVer">Ver detalles y mapa</button>
+      <button class="btn sec" id="ovOk">Entendido</button>
+    </div>
+  </div>
+
+  <!-- Hoja inferior -->
+  <div class="shade hidden" id="shade"><div class="sheet" id="sheet"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const CATS={
+  menor:{n:'Desaparición de menor',ic:'🧒',lvl:'Crítico',col:'#d62828',radios:[1,3,5,10],desc:'Niño de 7 años, playera roja y short azul. Visto por última vez frente a la escuela primaria.'},
+  adulto:{n:'Adulto mayor extraviado',ic:'👴',lvl:'Alto',col:'#e85d04',radios:[1,3,5],desc:'Señor de 78 años, camisa blanca, usa bastón. Padece Alzheimer y puede estar desorientado.'},
+  vehiculo:{n:'Robo de vehículo',ic:'🚗',lvl:'Alto',col:'#e85d04',radios:[2,5,10],desc:'Camioneta gris, placas MXX-123-A. Se dirige hacia la carretera federal.'},
+  asalto:{n:'Asalto / situación de riesgo',ic:'⚠️',lvl:'Alto',col:'#e85d04',radios:[1,2],desc:'Asalto a transeúnte por dos personas en motocicleta negra.'},
+  incendio:{n:'Incendio',ic:'🔥',lvl:'Crítico',col:'#d62828',radios:[1,2,3],desc:'Incendio en terreno baldío con humo denso. Evite la zona y cierre ventanas.'},
+  inundacion:{n:'Inundación',ic:'🌊',lvl:'Medio',col:'#1d6fb8',radios:[2,5],desc:'Calle inundada, no transitable para autos pequeños.'},
+  accidente:{n:'Accidente vial',ic:'🚑',lvl:'Medio',col:'#1d6fb8',radios:[1,2],desc:'Choque entre dos vehículos, un carril bloqueado.'},
+  panico:{n:'Botón de pánico activado',ic:'🆘',lvl:'Crítico',col:'#9d0208',radios:[0.5,1,2],desc:'Un usuario cercano activó su botón de pánico y podría necesitar ayuda.'}
+};
+const EXP_MS=10000;
+const CONTACTS=[{n:'Mamá',i:'M'},{n:'Papá',i:'P'},{n:'Hermana',i:'H'}];
+let me={lat:17.9583,lng:-102.1944}, alerts=[], seq=0, map=null, meMarker=null, muted=false, actx=null, ovQueue=[], ovShowing=null, openId=null;
+const $=id=>document.getElementById(id);
+
+/* ---------- util ---------- */
+function dist(a,b){const R=6371,t=Math.PI/180,dl=(b.lat-a.lat)*t,dg=(b.lng-a.lng)*t;const h=Math.sin(dl/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function offset(p,km,deg){const b=deg*Math.PI/180;return{lat:p.lat+km/111*Math.cos(b),lng:p.lng+km/(111*Math.cos(p.lat*Math.PI/180))*Math.sin(b)};}
+function fmtKm(k){return k<1?Math.round(k*1000)+' m':k.toFixed(1)+' km';}
+function ago(t){const s=Math.floor((Date.now()-t)/1000);if(s<60)return'hace '+s+' s';const m=Math.floor(s/60);return'hace '+m+' min';}
+function radius(a){return CATS[a.cat].radios[a.ri];}
+function users(r){return Math.round(Math.PI*r*r*38);}
+function lvlClass(l){return l==='Crítico'?'c':l==='Alto'?'a':'m';}
+function toast(msg){const t=$('toast');t.innerHTML=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3200);}
+function badges(a){
+  const c=CATS[a.cat];let h=`<span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>`;
+  if(a.status==='resuelta')h+='<span class="bdg r">Resuelta</span>';
+  else if(a.verified)h+='<span class="bdg v">✔ Verificada</span>';
+  else if(a.conf>=3)h+='<span class="bdg v">Confirmada por comunidad</span>';
+  else h+='<span class="bdg u">No confirmada</span>';
+  return h;
+}
+
+/* ---------- sonido tipo alerta sísmica ---------- */
+function siren(){
+  if(navigator.vibrate)navigator.vibrate([500,200,500,200,900]);
+  if(muted)return;
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();
+    const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type='square';
+    for(let i=0;i<8;i++)o.frequency.setValueAtTime(i%2?700:950,t+i*.3);
+    g.gain.setValueAtTime(.07,t);g.gain.setValueAtTime(0,t+2.4);
+    o.connect(g).connect(actx.destination);o.start(t);o.stop(t+2.5);}catch(e){}
+}
+document.addEventListener('pointerdown',()=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();}catch(e){}},{once:true});
+$('muteBtn').onclick=()=>{muted=!muted;$('muteBtn').textContent=muted?'🔇':'🔊';toast(muted?'Sonido desactivado (seguirá vibrando)':'Sonido activado');};
+
+/* ---------- mapa ---------- */
+function initMap(){
+  if(typeof L==='undefined'){$('map').innerHTML='<div class="nomap">El mapa necesita internet.<br>Las alertas siguen funcionando.</div>';return;}
+  map=L.map('map',{zoomControl:false,attributionControl:true}).setView([me.lat,me.lng],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  meMarker=L.marker([me.lat,me.lng],{zIndexOffset:1000,icon:L.divIcon({className:'',html:'<div class="me-dot" id="meDot"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+}
+function moveMe(p){me=p;if(meMarker)meMarker.setLatLng([p.lat,p.lng]);}
+initMap();
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(p=>{moveMe({lat:p.coords.latitude,lng:p.coords.longitude});if(map)map.setView([me.lat,me.lng],14);$('locTxt').textContent='Ubicación activa · GPS';},()=>{},{timeout:6000});
+}
+
+/* ---------- alertas ---------- */
+function createAlert(cat,p,o={}){
+  const c=CATS[cat];
+  const a={id:++seq,cat,lat:p.lat,lng:p.lng,created:Date.now(),lastExp:Date.now(),ri:0,status:'activa',verified:!!o.verified,source:o.source||'Reporte ciudadano',conf:0,flags:0,desc:o.desc||c.desc,photo:o.photo||null,notified:false,warned:false,mine:!!o.mine};
+  alerts.unshift(a);
+  if(map){
+    a.circle=L.circle([a.lat,a.lng],{radius:radius(a)*1000,color:c.col,fillColor:c.col,fillOpacity:.1,weight:2,dashArray:a.verified?null:'6 6'}).addTo(map);
+    a.marker=L.marker([a.lat,a.lng],{icon:pinIcon(a)}).addTo(map).on('click',()=>openSheet(a.id));
+  }
+  checkNotify(a);refresh();return a;
+}
+function pinIcon(a){const c=CATS[a.cat];return L.divIcon({className:'',html:`<div class="pin ${a.status==='resuelta'?'closed':''}" style="background:${c.col}">${c.ic}</div>`,iconSize:[34,34],iconAnchor:[17,17]});}
+function checkNotify(a){
+  if(a.mine||a.notified||a.status!=='activa')return;
+  const d=dist(me,a);
+  if(d<=radius(a)){a.notified=true;showOverlay(a);}
+  else if(!a.warned){a.warned=true;toast(`Nueva alerta a ${fmtKm(d)}, fuera del radio actual (${radius(a)} km). Si no se resuelve, el radio crecerá.`);}
+}
+function expandTick(){
+  alerts.forEach(a=>{
+    if(a.status!=='activa')return;
+    const R=CATS[a.cat].radios;
+    if(a.ri<R.length-1&&Date.now()-a.lastExp>=EXP_MS){
+      a.ri++;a.lastExp=Date.now();
+      if(a.circle)a.circle.setRadius(radius(a)*1000);
+      if(!a.notified)toast(`📡 Radio ampliado a ${radius(a)} km: ${CATS[a.cat].n}`);
+      checkNotify(a);
+    }
+  });
+  if(openId)renderSheet();
+  refresh();
+}
+setInterval(expandTick,1000);
+
+/* ---------- overlay tipo sísmica ---------- */
+function showOverlay(a){
+  if(ovShowing){ovQueue.push(a);return;}
+  ovShowing=a;const c=CATS[a.cat];
+  $('ovBg').style.background=c.col;$('ovTop').style.background=c.col;
+  $('ovIc').textContent=c.ic;$('ovT').textContent=c.n;
+  $('ovMeta').textContent=`A ${fmtKm(dist(me,a))} de ti · ${ago(a.created)} · ${a.source}`;
+  $('ovD').textContent=a.desc;$('ovB').innerHTML=badges(a);
+  $('ov').classList.remove('hidden');siren();
+}
+function closeOverlay(){$('ov').classList.add('hidden');ovShowing=null;if(ovQueue.length)setTimeout(()=>showOverlay(ovQueue.shift()),400);}
+$('ovOk').onclick=closeOverlay;
+$('ovVer').onclick=()=>{const a=ovShowing;closeOverlay();go('mapa');if(map)map.flyTo([a.lat,a.lng],15);openSheet(a.id);};
+
+/* ---------- lista ---------- */
+function refresh(){
+  const act=alerts.filter(a=>a.status==='activa'&&!a.mine);
+  $('nearChip').textContent=`${act.length} alerta${act.length===1?'':'s'} activa${act.length===1?'':'s'} cerca`;
+  const n=$('navCnt');n.style.display=act.length?'':'none';n.textContent=act.length;
+  const list=$('list');
+  if(!alerts.length){list.innerHTML='<div class="empty">Sin alertas por ahora.<br>Usa “Simular alerta” en el mapa.</div>';return;}
+  const s=[...alerts].sort((x,y)=>(x.status!==y.status?(x.status==='activa'?-1:1):dist(me,x)-dist(me,y)));
+  list.innerHTML=s.map(a=>{const c=CATS[a.cat];return`<div class="card ${a.status==='resuelta'?'closed':''}" style="border-left-color:${c.col}" onclick="openSheet(${a.id})"><div class="ic">${c.ic}</div><div class="bd"><h4>${c.n}${a.mine?' (tuya)':''}</h4><div class="m">${fmtKm(dist(me,a))} · ${ago(a.created)} · radio ${radius(a)} km</div><div class="badges">${badges(a)}</div></div></div>`;}).join('');
+}
+
+/* ---------- hoja de detalle ---------- */
+function openSheet(id){openId=id;renderSheet();$('shade').classList.remove('hidden');}
+function closeSheet(){openId=null;$('shade').classList.add('hidden');}
+$('shade').onclick=e=>{if(e.target.id==='shade')closeSheet();};
+function renderSheet(){
+  const a=alerts.find(x=>x.id===openId);if(!a){closeSheet();return;}
+  const c=CATS[a.cat],R=c.radios,next=a.ri<R.length-1&&a.status==='activa'?Math.max(0,Math.ceil((EXP_MS-(Date.now()-a.lastExp))/1000))+' s → '+R[a.ri+1]+' km':'Radio máximo';
+  $('sheet').innerHTML=`<div class="grip"></div>
+  <h3><span>${c.ic}</span>${c.n}</h3><div class="badges">${badges(a)}</div>
+  <div class="ph">${a.photo?`<img src="${a.photo}" alt="Foto del reporte">`:c.ic}</div>
+  <p style="font-size:14px;color:#374151">${a.desc.replace(/</g,'&lt;')}</p>
+  <div class="kv">
+    <div>Distancia<b>${fmtKm(dist(me,a))}</b></div><div>Publicada<b>${ago(a.created)}</b></div>
+    <div>Radio actual<b>${radius(a)} km</b></div><div>Próxima ampliación<b>${next}</b></div>
+    <div>Usuarios alcanzados<b>≈ ${users(radius(a))}</b></div><div>Fuente<b>${a.source}</b></div>
+    <div>Confirmaciones<b>${a.conf}</b></div><div>Reportes de falsa<b>${a.flags}</b></div>
+  </div>
+  ${a.status==='activa'?`
+  <button class="btn" onclick="confirmA(${a.id})">📍 Lo vi / tengo información</button>
+  <button class="btn sec" onclick="shareA(${a.id})">📤 Compartir alerta</button>
+  <button class="btn ok" onclick="resolveA(${a.id})">✅ Marcar como resuelta</button>
+  ${!a.verified?`<button class="btn out" onclick="flagA(${a.id})">🚩 Reportar como falsa</button>`:''}`:
+  `<div class="loc" style="background:#ecfdf5;color:#166534">Esta alerta fue cerrada. Se avisó a los usuarios que la recibieron.</div>`}
+  <button class="btn out" style="margin-top:8px" onclick="closeSheet()">Cerrar</button>`;
+}
+function confirmA(id){const a=alerts.find(x=>x.id===id);a.conf++;toast(a.conf===3&&!a.verified?'✔ Alerta confirmada por la comunidad':'Gracias. Tu ubicación y aviso se enviaron a quien publicó la alerta.');renderSheet();refresh();}
+function shareA(id){const a=alerts.find(x=>x.id===id),c=CATS[a.cat],txt=`ALERTA CERCA: ${c.n}. ${a.desc}`;if(navigator.share)navigator.share({title:'ALERTA CERCA',text:txt}).catch(()=>{});else{navigator.clipboard&&navigator.clipboard.writeText(txt);toast('Texto de la alerta copiado');}}
+function resolveA(id){const a=alerts.find(x=>x.id===id);a.status='resuelta';
+  if(a.circle)a.circle.setStyle({color:'#9ca3af',fillColor:'#9ca3af',fillOpacity:.05});if(a.marker)a.marker.setIcon(pinIcon(a));
+  toast(`✅ Alerta cerrada. Se notificó a ≈ ${users(radius(a))} usuarios que la situación se resolvió.`);renderSheet();refresh();}
+function flagA(id){const a=alerts.find(x=>x.id===id);a.flags++;
+  if(a.flags>=3){a.status='resuelta';if(a.circle)map.removeLayer(a.circle);if(a.marker)map.removeLayer(a.marker);alerts=alerts.filter(x=>x.id!==id);closeSheet();toast('🚩 Alerta retirada por múltiples reportes de información falsa. Pasa a revisión.');refresh();}
+  else{toast(`Reporte recibido (${a.flags}/3). Con 3 reportes la alerta se retira para revisión.`);renderSheet();}}
+
+/* ---------- simulador ---------- */
+$('simBtn').onclick=()=>{
+  openId=null;
+  $('sheet').innerHTML=`<div class="grip"></div><h3>Simular alerta</h3><p class="s" style="margin-top:4px">Se generará a una distancia aleatoria de ti (0.2 – 3.5 km).</p>
+  <div class="chips">${Object.keys(CATS).filter(k=>k!=='panico').map(k=>`<button onclick="simulate('${k}')"><span>${CATS[k].ic}</span>${CATS[k].n}</button>`).join('')}
+  <button onclick="simulate('panico')"><span>🆘</span>Pánico de otro usuario</button>
+  <button onclick="simulate()" style="grid-column:1/-1;text-align:center;background:#14161a;color:#fff;border-color:#14161a">🎲 Aleatoria</button></div>`;
+  $('shade').classList.remove('hidden');
+};
+function simulate(cat){
+  $('shade').classList.add('hidden');
+  const keys=Object.keys(CATS).filter(k=>k!=='panico');cat=cat||keys[Math.floor(Math.random()*keys.length)];
+  const p=offset(me,cat==='panico'?0.3:0.2+Math.random()*3.3,Math.random()*360);
+  const ver=cat!=='panico'&&Math.random()<.5;
+  createAlert(cat,p,{verified:ver,source:cat==='panico'?'Usuario de la app':ver?(Math.random()<.5?'Protección Civil':'Seguridad Pública Mpal.'):'Reporte ciudadano'});
+  if(map)map.flyTo([(me.lat+p.lat)/2,(me.lng+p.lng)/2],13);
+}
+
+/* ---------- reportar ---------- */
+$('repCat').innerHTML=Object.keys(CATS).filter(k=>k!=='panico').map(k=>`<option value="${k}">${CATS[k].ic} ${CATS[k].n}</option>`).join('');
+let repPhoto=null,myReports=[];
+$('repPhoto').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{repPhoto=r.result;$('phPrev').innerHTML=`<img src="${repPhoto}" alt="">`;};r.readAsDataURL(f);};
+$('repForm').onsubmit=e=>{
+  e.preventDefault();
+  myReports=myReports.filter(t=>Date.now()-t<600000);
+  if(myReports.length>=3){toast('Límite alcanzado: máximo 3 reportes cada 10 minutos (anti-spam).');return;}
+  const cat=$('repCat').value;
+  const dup=alerts.find(a=>a.status==='activa'&&a.cat===cat&&dist(me,a)<0.5);
+  if(dup){dup.conf++;toast('Ya existe una alerta similar a menos de 500 m. Sumamos tu reporte como confirmación.');go('mapa');openSheet(dup.id);return;}
+  myReports.push(Date.now());
+  const a=createAlert(cat,offset(me,0.05,Math.random()*360),{mine:true,source:'Tú (reporte ciudadano)',desc:$('repDesc').value.trim(),photo:repPhoto});
+  e.target.reset();repPhoto=null;$('phPrev').textContent='📷';
+  go('mapa');if(map)map.flyTo([a.lat,a.lng],14);
+  toast(`📨 Reporte enviado como NO CONFIRMADO a ≈ ${users(radius(a))} usuarios en ${radius(a)} km.`);
+};
+
+/* ---------- botón de pánico ---------- */
+let holdT=null,panic=null;
+function renderContacts(active){
+  const h=CONTACTS.map((c,i)=>`<div class="ct"><div class="av">${c.i}</div>${c.n}<span class="st ${active&&panic&&panic.ack>i?'ok':''}">${active?(panic&&panic.ack>i?'✓ Viendo tu ubicación':'Enviando…'):'Contacto de confianza'}</span></div>`).join('');
+  $(active?'ctActive':'ctIdle').innerHTML=(active?'':'<p class="s" style="margin:8px 0">Contactos de confianza</p>')+h;
+}
+renderContacts(false);
+const pb=$('pbtn');
+pb.addEventListener('pointerdown',e=>{e.preventDefault();pb.classList.add('hold');if(navigator.vibrate)navigator.vibrate(30);holdT=setTimeout(startPanic,2000);});
+['pointerup','pointerleave','pointercancel'].forEach(ev=>pb.addEventListener(ev,()=>{clearTimeout(holdT);pb.classList.remove('hold');}));
+pb.addEventListener('contextmenu',e=>e.preventDefault());
+function startPanic(){
+  pb.classList.remove('hold');if(navigator.vibrate)navigator.vibrate([200,100,200]);
+  const a=createAlert('panico',{...me},{mine:true,source:'Tú (botón de pánico)'});
+  panic={start:Date.now(),upd:0,ack:0,alert:a,trail:map?L.polyline([[me.lat,me.lng]],{color:'#d62828',weight:4}).addTo(map):null};
+  const d=document.getElementById('meDot');if(d)d.classList.add('panic');
+  $('panicIdle').style.display='none';$('panicActive').style.display='';
+  renderContacts(true);
+  panic.iv=setInterval(panicTick,1000);
+  toast('🆘 Pánico activado. Tus contactos y usuarios en 500 m fueron alertados.');
+}
+function panicTick(){
+  const s=Math.floor((Date.now()-panic.start)/1000);
+  $('pTimer').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  if(s%3===0){
+    moveMe(offset(me,0.02+Math.random()*0.03,Math.random()*360));
+    panic.upd++;panic.alert.lat=me.lat;panic.alert.lng=me.lng;
+    if(panic.alert.marker)panic.alert.marker.setLatLng([me.lat,me.lng]);
+    if(panic.alert.circle)panic.alert.circle.setLatLng([me.lat,me.lng]);
+    if(panic.trail)panic.trail.addLatLng([me.lat,me.lng]);
+  }
+  if(panic.ack<CONTACTS.length&&s>=(panic.ack+1)*2){panic.ack++;renderContacts(true);}
+  $('pCoords').textContent=`${me.lat.toFixed(5)}, ${me.lng.toFixed(5)}`;
+  $('pUpd').textContent=`${panic.upd} actualizaciones enviadas · radio ${radius(panic.alert)} km`;
+}
+$('safeBtn').onclick=()=>{
+  const pin=prompt('Para desactivar, escribe tu PIN de seguridad (demo: 1234)');
+  if(pin===null)return;
+  if(pin!=='1234'){toast('PIN incorrecto. El pánico sigue activo y se notificó a tus contactos.');return;}
+  clearInterval(panic.iv);resolveA(panic.alert.id);closeSheet();
+  if(panic.trail&&map)setTimeout(()=>map.removeLayer(panic.trail),4000);
+  const d=document.getElementById('meDot');if(d)d.classList.remove('panic');
+  panic=null;$('panicActive').style.display='none';$('panicIdle').style.display='';renderContacts(false);
+  toast('✅ Avisamos a tus contactos que estás a salvo.');
+};
+
+/* ---------- navegación ---------- */
+function go(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='view-'+v));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  if(v==='mapa'&&map)setTimeout(()=>map.invalidateSize(),50);
+  if(v==='reportar')$('repLoc').textContent=`📍 Se usará tu ubicación actual (${me.lat.toFixed(4)}, ${me.lng.toFixed(4)})`;
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+refresh();
+</script>
+</body>
+</html>
