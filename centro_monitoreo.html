@@ -268,7 +268,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <div class="ins" id="ins"></div>
     <div class="g2">
       <div class="panel">
-        <div class="ph"><div><h3>Mapa de concentración</h3><div class="s" id="zmapS"></div></div></div>
+        <div class="ph"><div><h3>Mapa de concentración</h3><div class="s" id="zmapS"></div></div><label class="sw" style="color:var(--mut)"><input type="checkbox" id="dotsTg" checked> Ver cada incidente</label></div>
         <div class="map" id="zoneMap"></div>
       </div>
       <div class="panel">
@@ -370,15 +370,22 @@ const CATS={
   inundacion:{n:'Inundación',ic:'🌊',g:'desastres',lvl:'Medio',f:5,radios:[2,5],res:[120,1440],h:hours([[15,21,4]])},
   accidente:{n:'Accidente vial',ic:'🚑',g:'accidentes',lvl:'Medio',f:14,radios:[1,2],res:[20,150],h:hours([[7,9,4],[13,15,3],[18,21,4]])}
 };
-/* Zonas genéricas de ejemplo: reemplazar por colonias reales cuando haya datos oficiales */
+/* Zonas genéricas de ejemplo: reemplazar por colonias reales cuando haya datos oficiales.
+   p = peso por población/actividad · r = qué tan dispersa es la zona (km) · tr = tendencia (+ sube, − baja)
+   w = qué tan propensa es a cada tipo de incidente */
 const ZONES=[
-  {id:'centro',n:'Zona Centro',km:0,deg:0,w:{robos:1.6,crimen:1.8,desastres:.6,personas:1.3,accidentes:1.5}},
-  {id:'norte',n:'Zona Norte',km:2.6,deg:0,w:{robos:1,crimen:.9,desastres:.5,personas:.8,accidentes:.8}},
-  {id:'noreste',n:'Zona Noreste (carretera)',km:3.6,deg:45,w:{robos:1.1,crimen:1,desastres:.6,personas:1,accidentes:1.9}},
-  {id:'oriente',n:'Zona Oriente',km:2.6,deg:95,w:{robos:1.2,crimen:1.5,desastres:.8,personas:1,accidentes:.9}},
-  {id:'puerto',n:'Zona Puerto / Industrial',km:3.4,deg:160,w:{robos:2,crimen:1,desastres:1.3,personas:.4,accidentes:1.3}},
-  {id:'costera',n:'Zona Costera',km:3.6,deg:210,w:{robos:.6,crimen:.5,desastres:2.3,personas:.9,accidentes:.6}},
-  {id:'poniente',n:'Zona Poniente',km:2.6,deg:270,w:{robos:.8,crimen:.7,desastres:1.4,personas:.7,accidentes:.7}}
+  {id:'centro',   n:'Zona Centro',              km:0,   deg:0,   p:2.3, r:.55, tr:.2,  w:{robos:1.5,crimen:2.1,desastres:.35,personas:1.6,accidentes:1.7}},
+  {id:'comercial',n:'Zona Comercial / Mercado', km:1.1, deg:300, p:1.6, r:.45, tr:.45,  w:{robos:2.6,crimen:1.9,desastres:.25,personas:1.2,accidentes:1.1}},
+  {id:'norte',    n:'Zona Norte',               km:2.4, deg:10,  p:1.3, r:.9,  tr:.35, w:{robos:1.1,crimen:.8,desastres:.4,personas:.9,accidentes:.7}},
+  {id:'noroeste', n:'Zona Noroeste',            km:3.4, deg:320, p:.75, r:1.1, tr:-.2, w:{robos:.9,crimen:.6,desastres:.9,personas:.7,accidentes:.5}},
+  {id:'noreste',  n:'Zona Noreste (carretera)', km:3.9, deg:40,  p:1.0, r:1.5, tr:0,   w:{robos:1.3,crimen:.7,desastres:.5,personas:.6,accidentes:2.8}},
+  {id:'oriente',  n:'Zona Oriente',             km:2.2, deg:85,  p:1.45,r:.8,  tr:.6,  w:{robos:1.2,crimen:1.6,desastres:.6,personas:1.0,accidentes:.8}},
+  {id:'puerto',   n:'Zona Puerto / Industrial', km:3.0, deg:130, p:1.25,r:1.2, tr:-.4, w:{robos:2.7,crimen:.9,desastres:1.4,personas:.25,accidentes:1.5}},
+  {id:'terminal', n:'Zona Terminal / Islas',    km:4.6, deg:110, p:.4,  r:.9,  tr:-.1, w:{robos:1.8,crimen:.4,desastres:2.2,personas:.2,accidentes:.9}},
+  {id:'costera',  n:'Zona Costera / Playa',     km:2.6, deg:200, p:.7,  r:1.0, tr:.15, w:{robos:.5,crimen:.45,desastres:3.2,personas:1.3,accidentes:.4}},
+  {id:'poniente', n:'Zona Poniente',            km:2.4, deg:265, p:1.1, r:.9,  tr:-.3, w:{robos:.8,crimen:1.1,desastres:1.2,personas:.8,accidentes:.6}},
+  {id:'sur',      n:'Zona Sur',                 km:1.8, deg:165, p:.6,  r:.7,  tr:.4,  w:{robos:.7,crimen:1.4,desastres:1.6,personas:.6,accidentes:.5}},
+  {id:'periferia',n:'Periferia rural norte',    km:6.2, deg:350, p:.3,  r:1.9, tr:0,   w:{robos:.6,crimen:.3,desastres:2.4,personas:2.2,accidentes:1.0}}
 ];
 const DAYS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
 const DAY=86400000;
@@ -390,6 +397,10 @@ const R=rng(20261008);
 function pickW(items,wf,rnd){const tot=items.reduce((s,x)=>s+wf(x),0);let r=rnd()*tot;for(const x of items){r-=wf(x);if(r<=0)return x;}return items[items.length-1];}
 function offset(p,km,deg){const b=deg*Math.PI/180;return{lat:p.lat+km/111*Math.cos(b),lng:p.lng+km/(111*Math.cos(p.lat*Math.PI/180))*Math.sin(b)};}
 ZONES.forEach(z=>z.c=offset(CENTER,z.km,z.deg));
+/* variación propia de cada zona (para que no todas se parezcan) y 2 focos de incidencia por zona */
+function gauss(rnd){let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+(()=>{const Z=rng(777);ZONES.forEach(z=>{z.noise={};['robos','crimen','desastres','personas','accidentes'].forEach(g=>z.noise[g]=Math.exp((Z()-.5)*1.1));
+  z.hot=[0,1].map(()=>offset(z.c,Z()*z.r*.8,Z()*360));});})();
 const zoneById=id=>ZONES.find(z=>z.id===id);
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function dist(a,b){const R=6371,t=Math.PI/180,dl=(b.lat-a.lat)*t,dg=(b.lng-a.lng)*t;const h=Math.sin(dl/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
@@ -411,8 +422,12 @@ function dayStart(t){const d=new Date(t);d.setHours(0,0,0,0);return d.getTime();
 
 /* ================= DATOS SIMULADOS ================= */
 let DATA=[],seq=1000,LOG=[];
+function spot(z,rnd){
+  if(rnd()<.38){const h=z.hot[rnd()<.6?0:1];return offset(h,Math.abs(gauss(rnd))*.18,rnd()*360);}
+  return offset(z.c,Math.min(Math.abs(gauss(rnd))*z.r*.75,z.r*2.2),rnd()*360);
+}
 function build(t,cat,z,rnd,active){
-  const c=CATS[cat],p=offset(z.c,rnd()*0.9,rnd()*360);
+  const c=CATS[cat],p=spot(z,rnd);
   const verified=cat!=='panico'&&rnd()<(c.g==='desastres'?.8:.55);
   const src=verified?(c.g==='desastres'?'Protección Civil':(rnd()<.6?'Seguridad Pública Mpal.':'Protección Civil')):(cat==='panico'?'Usuario (botón de pánico)':'Reporte ciudadano');
   const a={id:'',t,cat,zone:z.id,lat:p.lat,lng:p.lng,verified,src,conf:verified?0:Math.floor(rnd()*6),status:'activa',ri:0,resMin:null,verMin:verified?Math.round(2+rnd()*12):null,speed:1};
@@ -424,16 +439,19 @@ function build(t,cat,z,rnd,active){
   if(a.verMin!=null)a.verMin=Math.min(a.verMin,Math.floor((Date.now()-t)/60000));
   return a;
 }
-function randomEvent(rnd,t){
+function randomEvent(rnd,day){
+  day=day||0;
   const cat=pickW(Object.keys(CATS),k=>CATS[k].f,rnd);
-  const z=pickW(ZONES,z=>z.w[CATS[cat].g],rnd);
+  const g=CATS[cat].g;
+  const z=pickW(ZONES,z=>z.p*z.w[g]*z.noise[g]*Math.max(.15,1+z.tr*(.5-day/90)),rnd);
   return{cat,z};
 }
 (function generate(){
   const now=Date.now(),list=[];
-  for(let i=0;i<820;i++){
-    const {cat,z}=randomEvent(R);
-    const day=Math.floor(Math.pow(R(),1.12)*90);
+  for(let i=0;i<1150;i++){
+    const day=Math.floor(Math.pow(R(),1.15)*90);
+    if([0,6].includes(new Date(now-day*DAY).getDay())&&R()<.18)continue; /* fines de semana un poco distintos */
+    const {cat,z}=randomEvent(R,day);
     const hr=pickW([...Array(24).keys()],h=>CATS[cat].h[h],R);
     const t=dayStart(now-day*DAY)+hr*3600000+Math.floor(R()*60)*60000;
     if(t>now)continue;
@@ -800,7 +818,7 @@ let zGroup='all',zLayer=null;
 $('zchips').innerHTML=`<button class="chip on" data-g="all">Todos</button>`+Object.keys(GROUPS).map(g=>`<button class="chip" data-g="${g}"><i style="background:${GROUPS[g].col}"></i>${GROUPS[g].n}</button>`).join('');
 document.querySelectorAll('#zchips .chip').forEach(b=>b.onclick=()=>{zGroup=b.dataset.g;document.querySelectorAll('#zchips .chip').forEach(x=>x.classList.toggle('on',x===b));renderZones();});
 $('zper').onchange=renderZones;
-function initZoneMap(){if(zoneMap||typeof L==='undefined')return;zoneMap=L.map('zoneMap').setView([CENTER.lat-0.008,CENTER.lng],13);tiles(zoneMap);}
+function initZoneMap(){if(zoneMap||typeof L==='undefined')return;zoneMap=L.map('zoneMap',{preferCanvas:true}).setView([CENTER.lat+0.008,CENTER.lng+0.005],12);tiles(zoneMap);$('dotsTg').onchange=renderZones;}
 const gOf=a=>CATS[a.cat].g;
 function peakRange(arr){let best=0,bi=0;for(let h=0;h<24;h++){const s=arr[h]+arr[(h+1)%24]+arr[(h+2)%24];if(s>best){best=s;bi=h;}}return`${String(bi).padStart(2,'0')}:00 – ${String((bi+3)%24).padStart(2,'0')}:00`;}
 function renderZones(){
@@ -828,11 +846,14 @@ function renderZones(){
     <div class="stk" style="width:${Math.max(4,r.n/mx*100)}%">${Object.keys(GROUPS).map(g=>r.by[g]?`<span title="${GROUPS[g].n}: ${r.by[g]}" style="width:${r.by[g]/r.n*100}%;background:${GROUPS[g].col}"></span>`:'').join('')}</div></div></div>`).join('');
 
   /* mapa */
-  $('zmapS').textContent=`Tamaño e intensidad = cantidad de ${label}`;
+  $('zmapS').textContent=`Círculo = zona (más intenso = más ${label}) · puntos = ${sel.length} incidentes`;
   if(zoneMap){
     if(zLayer)zoneMap.removeLayer(zLayer);
-    zLayer=L.layerGroup(rk.map(r=>{const k=r.n/mx;return L.circle([r.z.c.lat,r.z.c.lng],{radius:700+800*k,color:col,weight:1.5,fillColor:col,fillOpacity:.12+.5*k})
-      .bindTooltip(`${r.z.n}: ${r.n}`,{permanent:true,direction:'center',className:'zl'})})).addTo(zoneMap);
+    const circles=rk.map(r=>{const k=r.n/mx;return L.circle([r.z.c.lat,r.z.c.lng],{radius:(r.z.r*550)+900*Math.sqrt(k),color:col,weight:1.2,fillColor:col,fillOpacity:.05+.35*k})
+      .bindTooltip(`${r.z.n}: ${r.n}`,{permanent:true,direction:'center',className:'zl'});});
+    const dots=$('dotsTg').checked?sel.map(a=>L.circleMarker([a.lat,a.lng],{radius:3,weight:0,fillColor:GROUPS[gOf(a)].col,fillOpacity:.65})
+      .bindTooltip(`${CATS[a.cat].ic} ${CATS[a.cat].n}<br>${fmtDate(a.t)}`)):[];
+    zLayer=L.layerGroup([...circles,...dots]).addTo(zoneMap);
     setTimeout(()=>zoneMap.invalidateSize(),60);
   }
 
