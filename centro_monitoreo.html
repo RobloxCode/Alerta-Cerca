@@ -61,6 +61,17 @@ body.locked header,body.locked main{visibility:hidden}
 .map.picking{cursor:crosshair;outline:3px solid var(--org)}
 .pickbar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:2700;background:#14161a;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;display:none;gap:10px;align-items:center}
 .pickbar.on{display:flex}
+.sec{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
+.sec h4{font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.sec .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.sec select,.sec input[type=text]{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;font:inherit;font-size:13px}
+.tbar{height:8px;border-radius:5px;background:#eef0f3;overflow:hidden;margin:6px 0}
+.tbar span{display:block;height:100%;border-radius:5px}
+.tparts{font-size:12px;color:#374151}
+.tparts div{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dashed #f1f2f4}
+.priv{background:#f5f3ff;border-color:#ddd6fe}
+.blk{background:#fef2f2;border-color:#fecaca}
+.lvlinfo{font-size:12px;color:var(--mut);margin-top:6px;line-height:1.5}
 pre.json{background:#14161a;color:#a7f3c0;border-radius:10px;padding:12px;font-size:11px;overflow-x:auto;max-height:320px;margin-top:8px}
 details summary{cursor:pointer;font-weight:700;font-size:13px;margin-top:10px}
 .bdg.tw{background:#e0e7ff;color:#3730a3}.bdg.twe{background:#fee2e2;color:#991b1b}
@@ -247,7 +258,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
       <input id="fq" type="search" placeholder="Buscar por ID, zona, categoría o fuente…">
       <select id="fcat"></select>
       <select id="fzone"></select>
-      <select id="fst"><option value="">Todos los estados</option><option value="activa">Activa</option><option value="resuelta">Resuelta</option><option value="retirada">Retirada (falsa)</option></select>
+      <select id="fst"><option value="">Todos los estados</option><option value="activa">Activa</option><option value="resuelta">Resuelta</option><option value="retirada">Retirada (falsa)</option><option value="caducada">Caducada (sin confirmar)</option></select>
       <select id="fver"><option value="">Verificadas y no</option><option value="1">Solo verificadas</option><option value="0">Solo no confirmadas</option></select>
       <select id="fper"><option value="7">Últimos 7 días</option><option value="30" selected>Últimos 30 días</option><option value="90">Últimos 90 días</option></select>
       <button class="btn out" id="csvBtn" style="margin-left:auto">⬇ Exportar CSV</button>
@@ -255,7 +266,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <div class="kpis" id="hk"></div>
     <div class="panel">
       <div class="tw"><table>
-        <thead><tr><th>ID</th><th>Fecha y hora</th><th>Categoría</th><th>Zona</th><th>Nivel</th><th>Fuente</th><th>Estado</th><th>Radio máx.</th><th>Alcance</th><th>Duración</th></tr></thead>
+        <thead><tr><th>ID</th><th>Fecha y hora</th><th>Categoría</th><th>Zona</th><th>Nivel</th><th>Fuente</th><th>Confiab.</th><th>Estado</th><th>Radio máx.</th><th>Alcance</th><th>Duración</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table></div>
       <div class="pag"><span id="pinfo"></span><div style="display:flex;gap:6px"><button class="btn out sm" id="prev">← Anterior</button><button class="btn out sm" id="next">Siguiente →</button></div></div>
@@ -334,6 +345,9 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <p style="font-size:13px;color:var(--mut);margin-top:4px">Se enviará a las apps cercanas y a la torre celular.</p>
     <label>Tipo de acontecimiento</label>
     <select id="sCat" required></select>
+    <label>Nivel de alertamiento</label>
+    <select id="sLvl"></select>
+    <div class="lvlinfo" id="sLvlInfo"></div>
     <div class="row2">
       <div><label>Zona</label><select id="sZone"></select></div>
       <div><label>Fuente</label><select id="sSrc"><option>Centro de monitoreo</option><option>Protección Civil</option><option>Seguridad Pública Mpal.</option></select></div>
@@ -341,6 +355,13 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <div class="pickloc"><span id="sLocTxt"></span><button type="button" class="btn sm sec" id="sPick">📍 Elegir en el mapa</button></div>
     <label>Descripción</label>
     <textarea id="sDesc" required placeholder="Características, ubicación exacta, indicaciones para la población…"></textarea>
+    <div id="sAuth" class="sec priv" style="display:none">
+      <h4>🔒 Datos de terceros: autorización del familiar o tutor</h4>
+      <div class="lvlinfo" style="margin-top:0">La descripción y la foto de una persona desaparecida (sobre todo de un menor) solo se publican con autorización de su familiar o tutor.</div>
+      <div class="row2"><div><label>Nombre de quien autoriza</label><input type="text" id="sTutor" placeholder="Nombre completo"></div>
+      <div><label>Parentesco</label><select id="sParen"><option>Madre</option><option>Padre</option><option>Tutor legal</option><option>Familiar directo</option><option>La propia persona</option></select></div></div>
+      <label class="chk"><input type="checkbox" id="sAuthOk"> Verifiqué la identidad de quien autoriza y su consentimiento</label>
+    </div>
     <label class="chk"><input type="checkbox" id="sVer" checked> Alerta oficial verificada</label>
     <button class="btn" type="submit" style="width:100%;margin-top:16px;padding:12px">📢 Mandar alerta</button>
   </form>
@@ -357,21 +378,36 @@ const CENTER={lat:17.9583,lng:-102.1944};
 const GROUPS={
   robos:{n:'Robos',col:'#e85d04'},
   crimen:{n:'Crímenes y riesgo',col:'#9d0208'},
-  desastres:{n:'Desastres',col:'#1d6fb8'},
-  personas:{n:'Personas extraviadas',col:'#7c3aed'},
-  accidentes:{n:'Accidentes',col:'#0f766e'}
+  desastres:{n:'Desastres y riesgos ambientales',col:'#1d6fb8'},
+  personas:{n:'Personas desaparecidas',col:'#7c3aed'},
+  accidentes:{n:'Accidentes',col:'#0f766e'},
+  otras:{n:'Otras',col:'#6b7280'}
+};
+/* NIVELES DE ALERTAMIENTO: radio, expansión, tipo de aviso y uso de la torre */
+const LEVELS={
+  info:      {n:'Informativa',ic:'ℹ️',col:'#2563eb',radios:[0.5,1],    stepMin:30,notif:'aviso discreto en la lista',cbc:'nunca'},
+  precaucion:{n:'Precaución', ic:'⚠️',col:'#d97706',radios:[1,2,3],    stepMin:20,notif:'banner con tono suave',cbc:'nunca'},
+  urgente:   {n:'Urgente',    ic:'🔶',col:'#ea580c',radios:[1,3,5],    stepMin:15,notif:'pantalla completa con alarma',cbc:'solo si se verifica'},
+  critica:   {n:'Crítica',    ic:'🚨',col:'#dc2626',radios:[1,3,5,10], stepMin:10,notif:'pantalla completa, sirena y vibración larga',cbc:'sí, si es oficial o verificada'}
 };
 function hours(spec){const w=Array(24).fill(1);spec.forEach(([a,b,v])=>{for(let h=a;h<=b;h++)w[h]+=v;});return w;}
+/* CATÁLOGO COMPLETO: las 12 categorías del reto + robo a casa y botón de pánico
+   g = grupo para estadísticas · lvl = nivel por defecto · personal = datos de terceros · f = frecuencia simulada */
 const CATS={
-  menor:{n:'Desaparición de menor',ic:'🧒',g:'personas',lvl:'Crítico',f:4,radios:[1,3,5,10],res:[30,300],h:hours([[13,19,4]])},
-  adulto:{n:'Adulto mayor extraviado',ic:'👴',g:'personas',lvl:'Alto',f:6,radios:[1,3,5],res:[40,480],h:hours([[8,20,3]])},
-  vehiculo:{n:'Robo de vehículo',ic:'🚗',g:'robos',lvl:'Alto',f:14,radios:[2,5,10],res:[60,1440],h:hours([[20,23,4],[0,5,5]])},
-  casa:{n:'Robo a casa o comercio',ic:'🏠',g:'robos',lvl:'Alto',f:12,radios:[1,2],res:[20,180],h:hours([[10,16,3],[1,4,3]])},
-  asalto:{n:'Asalto a transeúnte',ic:'⚠️',g:'crimen',lvl:'Alto',f:16,radios:[1,2],res:[15,120],h:hours([[19,23,6]])},
-  panico:{n:'Botón de pánico',ic:'🆘',g:'crimen',lvl:'Crítico',f:5,radios:[0.5,1,2],res:[5,60],h:hours([[20,23,4],[0,2,4]])},
-  incendio:{n:'Incendio',ic:'🔥',g:'desastres',lvl:'Crítico',f:6,radios:[1,2,3],res:[30,240],h:hours([[12,18,4]])},
-  inundacion:{n:'Inundación',ic:'🌊',g:'desastres',lvl:'Medio',f:5,radios:[2,5],res:[120,1440],h:hours([[15,21,4]])},
-  accidente:{n:'Accidente vial',ic:'🚑',g:'accidentes',lvl:'Medio',f:14,radios:[1,2],res:[20,150],h:hours([[7,9,4],[13,15,3],[18,21,4]])}
+  menor:       {n:'Desaparición o posible sustracción de menor',ic:'🧒',g:'personas',lvl:'critica',personal:true,f:3,res:[30,300],h:hours([[13,19,4]])},
+  desaparecida:{n:'Persona desaparecida',ic:'🧍',g:'personas',lvl:'urgente',personal:true,f:3,res:[120,1440],h:hours([[16,23,3]])},
+  adulto:      {n:'Adulto mayor o persona vulnerable extraviada',ic:'👴',g:'personas',lvl:'urgente',personal:true,f:5,res:[40,480],h:hours([[8,20,3]])},
+  vehiculo:    {n:'Robo de vehículo',ic:'🚗',g:'robos',lvl:'urgente',f:13,res:[60,1440],h:hours([[20,23,4],[0,5,5]])},
+  casa:        {n:'Robo a casa o comercio',ic:'🏠',g:'robos',lvl:'precaucion',f:11,res:[20,180],h:hours([[10,16,3],[1,4,3]])},
+  asalto:      {n:'Asalto o situación de riesgo',ic:'⚠️',g:'crimen',lvl:'urgente',f:15,res:[15,120],h:hours([[19,23,6]])},
+  panico:      {n:'Botón de pánico',ic:'🆘',g:'crimen',lvl:'critica',f:4,res:[5,60],h:hours([[20,23,4],[0,2,4]])},
+  incendio:    {n:'Incendio',ic:'🔥',g:'desastres',lvl:'urgente',f:6,res:[30,240],h:hours([[12,18,4]])},
+  accidente:   {n:'Accidente o emergencia relevante',ic:'🚑',g:'accidentes',lvl:'precaucion',f:13,res:[20,150],h:hours([[7,9,4],[13,15,3],[18,21,4]])},
+  evacuacion:  {n:'Evacuación',ic:'🏃',g:'desastres',lvl:'critica',f:1.2,res:[60,360],h:hours([[9,18,2]])},
+  inundacion:  {n:'Inundación',ic:'🌊',g:'desastres',lvl:'urgente',f:5,res:[120,1440],h:hours([[15,21,4]])},
+  fenomeno:    {n:'Fenómeno natural',ic:'🌀',g:'desastres',lvl:'urgente',f:1.5,res:[180,1440],h:hours([[14,22,3]])},
+  ambiental:   {n:'Riesgo ambiental',ic:'☣️',g:'desastres',lvl:'precaucion',f:2.5,res:[60,600],h:hours([[6,12,3]])},
+  otra:        {n:'Otra situación de riesgo',ic:'📌',g:'otras',lvl:'info',f:4,res:[30,300],h:hours([[8,20,2]])}
 };
 /* Zonas genéricas de ejemplo: reemplazar por colonias reales cuando haya datos oficiales.
    p = peso por población/actividad · r = qué tan dispersa es la zona (km) · tr = tendencia (+ sube, − baja)
@@ -402,7 +438,7 @@ function offset(p,km,deg){const b=deg*Math.PI/180;return{lat:p.lat+km/111*Math.c
 ZONES.forEach(z=>z.c=offset(CENTER,z.km,z.deg));
 /* variación propia de cada zona (para que no todas se parezcan) y 2 focos de incidencia por zona */
 function gauss(rnd){let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
-(()=>{const Z=rng(777);ZONES.forEach(z=>{z.noise={};['robos','crimen','desastres','personas','accidentes'].forEach(g=>z.noise[g]=Math.exp((Z()-.5)*1.1));
+(()=>{const Z=rng(777);ZONES.forEach(z=>{z.noise={};['robos','crimen','desastres','personas','accidentes','otras'].forEach(g=>z.noise[g]=Math.exp((Z()-.5)*1.1));
   z.hot=[0,1].map(()=>offset(z.c,Z()*z.r*.8,Z()*360));});})();
 const zoneById=id=>ZONES.find(z=>z.id===id);
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -414,12 +450,26 @@ function fmtDate(t){return new Date(t).toLocaleString('es-MX',{day:'2-digit',mon
 function fmtTime(t){return new Date(t).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});}
 function dur(m){if(m==null)return'—';if(m<60)return m+' min';const h=Math.floor(m/60);return h+' h '+(m%60?m%60+' min':'');}
 function ago(t){const m=Math.floor((Date.now()-t)/60000);if(m<1)return'hace segundos';if(m<60)return'hace '+m+' min';return'hace '+Math.floor(m/60)+' h '+(m%60)+' min';}
-function lvlClass(l){return l==='Crítico'?'c':l==='Alto'?'a':'m';}
-function users(a){const r=CATS[a.cat].radios[a.ri];return Math.round(Math.PI*r*r*38);}
-function radius(a){return CATS[a.cat].radios[a.ri];}
+function lvl(a){return LEVELS[a.level]||LEVELS[(CATS[a.cat]||{}).lvl]||LEVELS.urgente;}
+function lvlBadge(a){const L=lvl(a);return`<span class="bdg" style="background:${L.col};color:#fff">${L.ic} ${L.n}</span>`;}
+function radius(a){const R=lvl(a).radios;return R[Math.min(a.ri||0,R.length-1)];}
+function users(a){const r=radius(a);return Math.round(Math.PI*r*r*38);}
+function tcol(t){return t>=70?'#15803d':t>=40?'#d97706':'#b91c1c';}
+function trustChip(a){if(a.trust==null)return'';return`<span class="bdg" style="background:#fff;border:1.5px solid ${tcol(a.trust)};color:${tcol(a.trust)}">Confiabilidad ${a.trust}</span>`;}
+/* Índice de confiabilidad (para el historial simulado; las alertas en vivo lo calcula el servidor) */
+function trustLocal(a){
+  const parts=[];
+  if(a.verified)parts.push(['Verificada por '+(a.verifiedBy||a.src),95]);
+  else{parts.push([a.origin==='monitor'?'Emitida por el centro de monitoreo':'Reporte ciudadano (base)',a.origin==='monitor'?60:25]);
+    if(a.conf)parts.push([`${a.conf} confirmación(es) "lo vi aquí"`,Math.min(a.conf,4)*12]);
+    if(a.photo||a.hadPhoto)parts.push(['Evidencia adjunta (foto)',10]);
+    if(a.flags)parts.push([`${a.flags} reporte(s) de información falsa`,-15*a.flags]);}
+  a.trustParts=parts;a.trust=Math.max(0,Math.min(100,parts.reduce((s,x)=>s+x[1],0)));return a.trust;
+}
 function toast(m){const t=$('toast');t.innerHTML=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3500);}
-function stBadge(a){return a.status==='activa'?'<span class="bdg on">● Activa</span>':a.status==='resuelta'?'<span class="bdg r">Resuelta</span>':'<span class="bdg x">Retirada</span>';}
-function verBadge(a){return a.verified?'<span class="bdg v">✔ Verificada</span>':a.conf>=3?'<span class="bdg v">Confirmada comunidad</span>':'<span class="bdg u">No confirmada</span>';}
+function stBadge(a){return a.status==='activa'?'<span class="bdg on">● Activa</span>':a.status==='resuelta'?'<span class="bdg r">Resuelta</span>':a.status==='caducada'?'<span class="bdg x">⌛ Caducada</span>':'<span class="bdg x">Retirada</span>';}
+function verBadge(a){return a.verified?'<span class="bdg v">✔ Alerta verificada</span>':'<span class="bdg u">Reporte ciudadano sin confirmar</span>';}
+function privBadge(a){return a.restricted||a.hasPrivate?'<span class="bdg" style="background:#ede9fe;color:#5b21b6">🔒 Datos en resguardo</span>':a.authorization?'<span class="bdg" style="background:#ede9fe;color:#5b21b6">✅ Datos autorizados</span>':'';}
 function heat(r,col){col=col||'#d62828';const n=parseInt(col.slice(1),16);return`rgba(${n>>16},${n>>8&255},${n&255},${(.06+.84*r).toFixed(2)})`;}
 function dayStart(t){const d=new Date(t);d.setHours(0,0,0,0);return d.getTime();}
 
@@ -433,20 +483,25 @@ function build(t,cat,z,rnd,active){
   const c=CATS[cat],p=spot(z,rnd);
   const verified=cat!=='panico'&&rnd()<(c.g==='desastres'?.8:.55);
   const src=verified?(c.g==='desastres'?'Protección Civil':(rnd()<.6?'Seguridad Pública Mpal.':'Protección Civil')):(cat==='panico'?'Usuario (botón de pánico)':'Reporte ciudadano');
-  const a={id:'',t,cat,zone:z.id,lat:p.lat,lng:p.lng,verified,src,conf:verified?0:Math.floor(rnd()*6),status:'activa',ri:0,resMin:null,verMin:verified?Math.round(2+rnd()*12):null,speed:1};
+  const order=['info','precaucion','urgente','critica'],li=order.indexOf(c.lvl),rl=rnd();
+  const level=order[Math.max(0,Math.min(3,li+(rl<.12?-1:rl>.93?1:0)))];
+  const a={id:'',t,cat,zone:z.id,lat:p.lat,lng:p.lng,verified,src,level,conf:verified?0:Math.floor(rnd()*5),flags:0,hadPhoto:rnd()<.35,status:'activa',ri:0,resMin:null,verMin:verified?Math.round(2+rnd()*12):null,speed:1,origin:'app'};
   if(!active){
-    if(!verified&&rnd()<.12){a.status='retirada';a.resMin=Math.round(5+rnd()*40);}
-    else{a.status='resuelta';a.resMin=Math.round(c.res[0]+rnd()*(c.res[1]-c.res[0]));a.ri=Math.min(c.radios.length-1,Math.floor(a.resMin/15));}
+    const L=LEVELS[level];
+    if(!verified&&rnd()<.12){a.status='retirada';a.flags=3;a.resMin=Math.round(5+rnd()*40);}
+    else if(!verified&&a.conf<2&&cat!=='panico'&&rnd()<.3){a.status='caducada';a.resMin=20;}
+    else{a.status='resuelta';a.resMin=Math.round(c.res[0]+rnd()*(c.res[1]-c.res[0]));a.ri=Math.min(L.radios.length-1,Math.floor(a.resMin/L.stepMin));}
     if(t+a.resMin*60000>Date.now())a.resMin=Math.max(1,Math.floor((Date.now()-t)/60000));
   }
   if(a.verMin!=null)a.verMin=Math.min(a.verMin,Math.floor((Date.now()-t)/60000));
+  trustLocal(a);
   return a;
 }
 function randomEvent(rnd,day){
   day=day||0;
   const cat=pickW(Object.keys(CATS),k=>CATS[k].f,rnd);
   const g=CATS[cat].g;
-  const z=pickW(ZONES,z=>z.p*z.w[g]*z.noise[g]*Math.max(.15,1+z.tr*(.5-day/90)),rnd);
+  const z=pickW(ZONES,z=>z.p*(z.w[g]??.8)*(z.noise[g]||1)*Math.max(.15,1+z.tr*(.5-day/90)),rnd);
   return{cat,z};
 }
 (function generate(){
@@ -463,7 +518,7 @@ function randomEvent(rnd,day){
   list.sort((a,b)=>a.t-b.t).forEach(a=>a.id='A-'+(++seq));
   DATA=list.reverse();
 })();
-function riOf(a){const R2=CATS[a.cat].radios,end=a.closedAt||Date.now();return Math.min(R2.length-1,Math.max(0,Math.floor((end-a.t)*(a.speed||1)/900000)));}
+function riOf(a){const L=lvl(a),end=a.closedAt||Date.now();return Math.min(L.radios.length-1,Math.max(0,Math.floor((end-a.t)*(a.speed||1)/(L.stepMin*60000))));}
 function updateRadii(){DATA.forEach(a=>{if(a.status==='activa')a.ri=riOf(a);});}
 function inPeriod(days,from){const now=Date.now();return a=>a.t>=now-days*DAY-(from||0)&&a.t<now-(from||0);}
 
@@ -484,15 +539,15 @@ function renderKPIs(){
   const m30=DATA.filter(inPeriod(30)),res=m30.filter(a=>a.status==='resuelta');
   const avg=res.length?Math.round(res.reduce((s,a)=>s+a.resMin,0)/res.length):0;
   const ver=m30.length?Math.round(m30.filter(a=>a.verified).length/m30.length*100):0;
-  const fal=m30.filter(a=>a.status==='retirada').length;
+  const fal=m30.filter(a=>a.status==='retirada').length,cad=m30.filter(a=>a.status==='caducada').length;
   const reach=today.reduce((s,a)=>s+users(a),0);
   $('kpis').innerHTML=`
-  <div class="kpi hot"><div class="l">Alertas activas</div><div class="v">${act.length}</div><div class="d">${act.filter(a=>CATS[a.cat].lvl==='Crítico').length} de nivel crítico</div></div>
+  <div class="kpi hot"><div class="l">Alertas activas</div><div class="v">${act.length}</div><div class="d">${act.filter(a=>a.level==='critica').length} críticas · ${act.filter(a=>!a.verified).length} sin verificar</div></div>
   <div class="kpi"><div class="l">Alertas hoy</div><div class="v">${today.length}</div><div class="d">desde las 00:00</div></div>
   <div class="kpi"><div class="l">Usuarios alcanzados hoy</div><div class="v">${reach.toLocaleString('es-MX')}</div><div class="d">estimado por radio de cobertura</div></div>
   <div class="kpi"><div class="l">Tiempo prom. de resolución</div><div class="v">${dur(avg)}</div><div class="d">últimos 30 días</div></div>
   <div class="kpi"><div class="l">Alertas verificadas</div><div class="v">${ver}%</div><div class="d">últimos 30 días</div></div>
-  <div class="kpi"><div class="l">Reportes falsos retirados</div><div class="v">${fal}</div><div class="d">últimos 30 días</div></div>`;
+  <div class="kpi"><div class="l">Falsos retirados · caducados</div><div class="v">${fal} · ${cad}</div><div class="d">últimos 30 días (antiabuso)</div></div>`;
 }
 const liveLayers=new Map();let heatLayer=null;
 function initLiveMap(){
@@ -504,7 +559,7 @@ function renderLiveMap(){
   const act=DATA.filter(a=>a.status==='activa'),ids=new Set(act.map(a=>a.id));
   for(const [id,l] of liveLayers)if(!ids.has(id)){liveMap.removeLayer(l.m);liveMap.removeLayer(l.c);if(l.p)liveMap.removeLayer(l.p);liveLayers.delete(id);}
   act.forEach(a=>{
-    const c=CATS[a.cat],col=GROUPS[c.g].col;let l=liveLayers.get(a.id);
+    const c=CATS[a.cat],col=lvl(a).col;let l=liveLayers.get(a.id);
     if(!l){l={c:L.circle([a.lat,a.lng],{radius:radius(a)*1000,color:col,fillColor:col,fillOpacity:.08,weight:2,dashArray:a.verified?null:'6 6'}).addTo(liveMap),
       m:L.marker([a.lat,a.lng],{icon:L.divIcon({className:'',html:`<div class="pin" style="background:${col}">${c.ic}</div>`,iconSize:[30,30],iconAnchor:[15,15]})}).addTo(liveMap).on('click',()=>openDrawer(a.id))};liveLayers.set(a.id,l);}
     l.c.setLatLng([a.lat,a.lng]);l.c.setRadius(radius(a)*1000);l.c.setStyle({dashArray:a.verified?null:'6 6'});l.m.setLatLng([a.lat,a.lng]);
@@ -522,10 +577,10 @@ $('heatTg').onchange=toggleHeat;
 function renderFeed(){
   const act=DATA.filter(a=>a.status==='activa').sort((a,b)=>b.t-a.t);
   $('actCnt').textContent=act.length+' activas';
-  $('feed').innerHTML=act.length?act.map(a=>{const c=CATS[a.cat];return`<div class="fc ${a._new?'new':''}" style="border-left-color:${GROUPS[c.g].col}" onclick="openDrawer('${a.id}')">
+  $('feed').innerHTML=act.length?act.map(a=>{const c=CATS[a.cat];return`<div class="fc ${a._new?'new':''}" style="border-left-color:${lvl(a).col};${a.verified?'':'border-left-style:dashed'}" onclick="openDrawer('${a.id}')">
     <div class="t"><span>${c.ic}</span>${c.n}<span style="margin-left:auto;font-size:11px;color:var(--mut);font-weight:600">${a.id}</span></div>
-    <div class="m">${zoneById(a.zone).n} · ${ago(a.t)} · radio ${radius(a)} km · ≈${users(a)} usuarios</div>
-    <div class="badges"><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>${verBadge(a)}${originBadge(a)}${towerBadge(a)}${a.conf?`<span class="bdg">📍 ${a.conf} confirm.</span>`:''}${a.flags?`<span class="bdg x">🚩 ${a.flags}/3</span>`:''}</div>
+    <div class="m">${zoneById(a.zone).n} · ${ago(a.t)} · radio ${radius(a)} km · ≈${users(a)} usuarios${a.expiresAt&&!a.verified?` · ⌛ caduca en ${Math.max(0,Math.ceil((a.expiresAt-Date.now())/60000))} min`:''}</div>
+    <div class="badges">${lvlBadge(a)}${verBadge(a)}${trustChip(a)}${privBadge(a)}${originBadge(a)}${towerBadge(a)}${a.conf?`<span class="bdg">📍 ${a.conf} confirm.</span>`:''}${a.flags?`<span class="bdg x">🚩 ${a.flags}/3</span>`:''}</div>
     <div class="acts" onclick="event.stopPropagation()">
       ${!a.verified?`<button class="btn sm sec" onclick="act('${a.id}','verificar')">✔ Verificar</button>`:''}
       <button class="btn sm ok" onclick="act('${a.id}','cerrar')">Cerrar como resuelta</button>
@@ -548,6 +603,19 @@ function renderCats(){
   const d=DATA.filter(inPeriod(30)),cnt=Object.keys(CATS).map(k=>({k,n:d.filter(a=>a.cat===k).length})).sort((a,b)=>b.n-a.n),mx=Math.max(...cnt.map(c=>c.n),1);
   $('cats').innerHTML=cnt.map(({k,n})=>`<div class="hb"><span>${CATS[k].ic} ${CATS[k].n}</span><div class="bar"><span style="width:${n/mx*100}%;background:${GROUPS[CATS[k].g].col}"></span></div><span class="n">${n}</span></div>`).join('');
 }
+function setLevel(id){const v=$('dLvl').value;send(`alerts/${id}/level`,{level:v,by:opLabel()});log(`👤 ${esc(SESSION?SESSION.name:'Operador')} cambió el nivel de ${id} a ${LEVELS[v].n}`);}
+function authorize(id){
+  const tutor=$('dTutor').value.trim();
+  if(!tutor||!$('dAuthOk').checked){toast('🔒 Indica quién autoriza y confirma que verificaste su identidad y consentimiento.');return;}
+  send(`alerts/${id}/authorize`,{tutor,parentesco:$('dParen').value,by:opLabel()});
+  log(`👤 ${esc(SESSION?SESSION.name:'Operador')} publicó datos autorizados de ${id} (autoriza: ${esc($('dParen').value)})`);
+}
+async function blockDev(dev,on){
+  if(on&&!confirm('¿Bloquear este dispositivo? No podrá enviar reportes durante 24 horas.'))return;
+  try{const r=await fetch(`/api/devices/${dev}/${on?'block':'unblock'}`,{method:'POST'});const d=await r.json();if(!r.ok)throw new Error(d.error);
+    log(`👤 ${esc(SESSION?SESSION.name:'Operador')} ${on?'bloqueó':'desbloqueó'} el dispositivo ${esc(dev)}`);toast(on?'🚫 Dispositivo bloqueado 24 h.':'✅ Dispositivo desbloqueado.');
+    Object.values(FULL).forEach(f=>f.stale=true);renderDrawer();}catch(e){toast('⚠️ '+esc(e.message));}
+}
 function act(id,what){
   const m={verificar:'verify',cerrar:'resolve',retirar:'retire'}[what];
   send(`alerts/${id}/${m}`,{by:opLabel()});
@@ -565,16 +633,21 @@ function simulate(){
 }
 /* ---------- Mandar alerta (operador) ---------- */
 let sendLoc=null;
-$('sCat').innerHTML=Object.keys(CATS).filter(k=>k!=='panico').map(k=>`<option value="${k}">${CATS[k].ic} ${CATS[k].n} · ${CATS[k].lvl}</option>`).join('');
+$('sCat').innerHTML=Object.keys(GROUPS).map(g=>`<optgroup label="${GROUPS[g].n}">${Object.keys(CATS).filter(k=>k!=='panico'&&CATS[k].g===g).map(k=>`<option value="${k}">${CATS[k].ic} ${CATS[k].n}</option>`).join('')}</optgroup>`).join('');
+$('sLvl').innerHTML=Object.keys(LEVELS).map(k=>`<option value="${k}">${LEVELS[k].ic} ${LEVELS[k].n}</option>`).join('');
+function sLvlInfo(){const L=LEVELS[$('sLvl').value],ver=$('sVer').checked;
+  $('sLvlInfo').innerHTML=`Radio ${L.radios.join(' → ')} km, se amplía cada ${L.stepMin} min · En el celular: ${L.notif} · Torre celular: <b>${$('sLvl').value==='critica'||($('sLvl').value==='urgente'&&ver)?'sí':'no'}</b>`;}
+function sCatChange(){const k=$('sCat').value;$('sLvl').value=CATS[k].lvl;$('sAuth').style.display=CATS[k].personal?'':'none';sLvlInfo();if(!$('sDesc').dataset.edited)$('sDesc').value=DESC[k]||'';}
+$('sLvl').onchange=sLvlInfo;$('sVer').onchange=sLvlInfo;
 $('sZone').innerHTML=ZONES.map(z=>`<option value="${z.id}">${z.n}</option>`).join('');
-const DESC={menor:'Menor desaparecido. Describa edad, ropa y último lugar donde fue visto.',adulto:'Adulto mayor extraviado. Describa edad, ropa y condición de salud.',vehiculo:'Vehículo robado. Marca, color, placas y dirección de huida.',casa:'Robo a casa o comercio. Describa a los responsables y hacia dónde huyeron.',asalto:'Asalto o situación de riesgo. Evite la zona.',incendio:'Incendio. Evite la zona, cierre ventanas y siga indicaciones de Protección Civil.',inundacion:'Inundación. No cruce calles con corriente de agua.',accidente:'Accidente vial. Tome vías alternas.'};
+const DESC={menor:'Menor desaparecido. Describa edad, ropa y último lugar donde fue visto.',adulto:'Adulto mayor extraviado. Describa edad, ropa y condición de salud.',vehiculo:'Vehículo robado. Marca, color, placas y dirección de huida.',casa:'Robo a casa o comercio. Describa a los responsables y hacia dónde huyeron.',asalto:'Asalto o situación de riesgo. Evite la zona.',incendio:'Incendio. Evite la zona, cierre ventanas y siga indicaciones de Protección Civil.',inundacion:'Inundación. No cruce calles con corriente de agua.',accidente:'Accidente vial. Tome vías alternas.',desaparecida:'Persona desaparecida. Describa edad, ropa, señas particulares y último lugar donde fue vista.',evacuacion:'Evacuación preventiva. Diríjase al punto de reunión indicado y siga a Protección Civil.',fenomeno:'Fenómeno natural. Resguárdese y asegure objetos sueltos.',ambiental:'Riesgo ambiental. Cierre ventanas y evite actividades al aire libre.',otra:'Situación de riesgo. Evite la zona y siga las indicaciones.'};
 function setSendLoc(p,label){sendLoc=p;$('sLocTxt').innerHTML=`📍 ${esc(label)} <small style="color:var(--mut)">(${p.lat.toFixed(4)}, ${p.lng.toFixed(4)})</small>`;}
 function zoneLoc(){const z=zoneById($('sZone').value);setSendLoc(offset(z.c,Math.random()*0.4,Math.random()*360),z.n);}
 $('sZone').onchange=zoneLoc;
-$('sCat').onchange=()=>{if(!$('sDesc').dataset.edited)$('sDesc').value=DESC[$('sCat').value]||'';};
+$('sCat').onchange=sCatChange;
 $('sDesc').oninput=()=>$('sDesc').dataset.edited='1';
 function openSend(){
-  if(!$('sendModal').classList.contains('on')&&!sendLoc){$('sDesc').dataset.edited='';$('sDesc').value=DESC[$('sCat').value]||'';zoneLoc();}
+  if(!$('sendModal').classList.contains('on')&&!sendLoc){$('sDesc').dataset.edited='';sCatChange();zoneLoc();}
   $('sendModal').classList.add('on');
 }
 function closeSend(){$('sendModal').classList.remove('on');}
@@ -589,9 +662,15 @@ function endPick(){$('pickbar').classList.remove('on');$('liveMap').classList.re
 $('pickCancel').onclick=()=>{if(liveMap)liveMap.off('click');endPick();$('sendModal').classList.add('on');};
 $('sendForm').onsubmit=e=>{
   e.preventDefault();
-  const cat=$('sCat').value,desc=$('sDesc').value.trim(),ver=$('sVer').checked;
+  const cat=$('sCat').value,desc=$('sDesc').value.trim(),ver=$('sVer').checked,level=$('sLvl').value;
+  let authorization=null;
+  if(CATS[cat].personal){
+    const tutor=$('sTutor').value.trim();
+    if(!tutor||!$('sAuthOk').checked){toast('🔒 Para publicar datos de una persona desaparecida indica quién autoriza y confirma que verificaste su consentimiento.');return;}
+    authorization={tutor,parentesco:$('sParen').value,by:opLabel()};
+  }
   if(!sendLoc)zoneLoc();
-  send('alerts',{cat,lat:sendLoc.lat,lng:sendLoc.lng,verified:ver,speed:90,owner:'monitor',origin:'monitor',src:ver?$('sSrc').value:'Centro de monitoreo (sin verificar)',desc});
+  send('alerts',{cat,level,lat:sendLoc.lat,lng:sendLoc.lng,verified:ver,speed:90,owner:'monitor',origin:'monitor',src:ver?$('sSrc').value:'Centro de monitoreo (sin verificar)',desc,authorization});
   log(`👤 ${esc(SESSION?SESSION.name:'Operador')} mandó una alerta: ${CATS[cat].n}`);
   closeSend();sendLoc=null;toast('📢 Enviando alerta a las apps y a la torre…');
 };
@@ -600,13 +679,14 @@ setInterval(()=>{if($('simTg').checked)simulate();},20000);
 /* ================= SINCRONIZACIÓN =================
    Modo servidor: abierto desde server.js → recibe en tiempo real lo que pasa en todas las apps.
    Modo local: abierto como archivo → se sincroniza con la app abierta en otra pestaña del mismo navegador. */
-const KEYS=['id','cat','lat','lng','t','speed','status','verified','src','conf','flags','desc','photo','origin','owner','verifiedAt','verifiedBy','closedAt','trail','cbc'];
+const KEYS=['id','cat','lat','lng','t','speed','status','verified','src','conf','flags','desc','photo','origin','owner','verifiedAt','verifiedBy','closedAt','trail','cbc','level','trust','trustParts','restricted','hasPrivate','authorization','expiresAt'];
+const FULL={}; /* detalle completo (datos en resguardo + dispositivo), solo para el operador */
 let TOWER=null;
 const Sync={mode:'local',bc:null};
 function plain(a){const o={};KEYS.forEach(k=>o[k]=a[k]===undefined?null:JSON.parse(JSON.stringify(a[k])));return o;}
 function makeAlert(b,id){
   const now=Date.now(),ver=!!b.verified;
-  return{id,cat:b.cat,lat:+b.lat,lng:+b.lng,t:now,speed:Math.min(500,Math.max(1,+b.speed||1)),status:'activa',verified:ver,src:String(b.src||'Reporte ciudadano').slice(0,60),conf:0,flags:0,desc:String(b.desc||'').slice(0,500),photo:b.photo||null,origin:String(b.origin||'app'),owner:String(b.owner||''),verifiedAt:ver?now:null,verifiedBy:ver?b.src:null,closedAt:null,trail:b.cat==='panico'?[[+b.lat,+b.lng]]:null};
+  return{id,cat:b.cat,lat:+b.lat,lng:+b.lng,t:now,speed:Math.min(500,Math.max(1,+b.speed||1)),status:'activa',verified:ver,src:String(b.src||'Reporte ciudadano').slice(0,60),conf:0,flags:0,desc:String(b.desc||'').slice(0,500),photo:b.photo||null,origin:String(b.origin||'app'),owner:String(b.owner||''),verifiedAt:ver?now:null,verifiedBy:ver?b.src:null,closedAt:null,trail:b.cat==='panico'?[[+b.lat,+b.lng]]:null,level:LEVELS[b.level]?b.level:CATS[b.cat].lvl,authorization:b.authorization||null};
 }
 function applyAct(a,act,b){
   b=b||{};const now=Date.now();if(a.status!=='activa')return a;
@@ -616,6 +696,7 @@ function applyAct(a,act,b){
   else if(act==='resolve'){a.status='resuelta';a.closedAt=now;}
   else if(act==='retire'){a.status='retirada';a.closedAt=now;}
   else if(act==='move'){a.lat=+b.lat;a.lng=+b.lng;if(a.trail){a.trail.push([a.lat,a.lng]);if(a.trail.length>300)a.trail.shift();}}
+  else if(act==='level'&&LEVELS[b.level])a.level=b.level;
   return a;
 }
 function setConn(s){
@@ -655,12 +736,13 @@ async function send(path,body){
 }
 function toRec(d){
   const r={...d,live:true,zone:nearestZone(d).id};
+  if(r.trust==null)trustLocal(r);
   r.ri=riOf(r);
   r.verMin=d.verifiedAt?Math.max(0,Math.round((d.verifiedAt-d.t)/60000)):null;
   r.resMin=d.closedAt?Math.max(1,Math.round((d.closedAt-d.t)/60000)):null;
   return r;
 }
-function merge(d){const r=toRec(d),i=DATA.findIndex(x=>x.id===r.id);if(i>=0){r._new=DATA[i]._new;DATA[i]=r;}else DATA.unshift(r);return r;}
+function merge(d){if(FULL[d.id])FULL[d.id].stale=true;const r=toRec(d),i=DATA.findIndex(x=>x.id===r.id);if(i>=0){r._new=DATA[i]._new;DATA[i]=r;}else DATA.unshift(r);return r;}
 function onEvent(ev){
   if(ev.type==='snapshot'){
     ev.alerts.forEach(merge);DATA.sort((a,b)=>b.t-a.t);
@@ -675,7 +757,7 @@ function onEvent(ev){
     case 'create':
       r._new=true;
       log(`🔔 Nueva alerta ${r.id}: ${c.n} en ${z.n} · ${who}`);
-      toast(`<b>${c.ic} Nueva alerta · ${c.lvl}</b><br>${c.n} en ${z.n}<br><small>${esc(r.src)} · ${who}${r.photo?' · 📷 con foto':''}</small>`);
+      toast(`<b>${c.ic} Nueva alerta · ${lvl(r).ic} ${lvl(r).n}</b><br>${c.n} en ${z.n}<br><small>${r.verified?'✔ verificada':'reporte ciudadano · confiabilidad '+(r.trust??'—')} · ${who}${r.hasPrivate?' · 🔒 datos en resguardo, requiere autorización':''}</small>`);
       beep();
       if(liveMap&&$('view-vivo').classList.contains('on'))liveMap.flyTo([r.lat,r.lng],14,{duration:.8});
       break;
@@ -689,6 +771,9 @@ function onEvent(ev){
       else if(t.status==='detenido')log(`📡 ${r.id} difusión detenida en la torre (message_id ${t.messageId})`);
       break;}
     case 'retire':log(`🚩 ${r.id} retirada por información falsa`);toast(`${r.id} retirada y enviada a revisión.`);break;
+    case 'expire':log(`⌛ ${r.id} caducó: nadie lo confirmó a tiempo (${c.n})`);break;
+    case 'level':log(`${lvl(r).ic} ${r.id} ahora es nivel ${lvl(r).n}`);break;
+    case 'authorize':log(`✅ ${r.id}: datos publicados con autorización de ${esc(r.authorization?r.authorization.parentesco:'familiar')}`);toast(`✅ Datos de ${r.id} publicados a la comunidad.`);break;
   }
   if(ev.action==='move'){renderLiveMap();if(openId===r.id)renderDrawer();return;}
   refreshAll();if(openId===r.id)renderDrawer();
@@ -745,20 +830,34 @@ function openDrawer(id){openId=id;renderDrawer();$('drawer').classList.add('on')
 function closeDrawer(){openId=null;$('drawer').classList.remove('on');$('shade').classList.remove('on');}
 $('shade').onclick=closeDrawer;
 function renderDrawer(){
-  const a=DATA.find(x=>x.id===openId);if(!a)return;const c=CATS[a.cat],z=zoneById(a.zone);
+  const a0=DATA.find(x=>x.id===openId);if(!a0)return;const c=CATS[a0.cat],z=zoneById(a0.zone);
+  /* para alertas en vivo se piden los datos completos (incluye datos en resguardo y reputación del dispositivo) */
+  const F=FULL[a0.id];
+  if(a0.live&&Sync.mode==='server'&&(!F||F.stale)&&!(F&&F.loading)){
+    FULL[a0.id]={...(F||{}),loading:true};
+    fetch(`/api/alerts/${a0.id}/full`,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{FULL[a0.id]=d?{...d,stale:false}:{stale:false};if(openId===a0.id)renderDrawer();}).catch(()=>{FULL[a0.id]={stale:false};});
+  }
+  const a=F&&F.alert?{...a0,desc:F.alert.desc,photo:F.alert.photo}:a0,dv=F&&F.device,L=lvl(a);
   const ev=[{t:a.t,m:'Alerta creada',s:esc(a.src)+(a.live?' · '+(a.origin==='monitor'?'centro de monitoreo':'app móvil'):'')}];
   if(a.verMin!=null)ev.push({t:a.t+a.verMin*60000,m:'Verificada',s:a.verifiedBy||a.src});
   if(a.cbc&&a.cbc.status!=='enviando')ev.push({t:a.cbc.at,m:a.cbc.status==='error'?'Error al enviar a la torre celular':`Transmitida por la torre celular (message_id ${a.cbc.messageId})`,s:a.cbc.status==='error'?esc(a.cbc.error):'Cell Broadcast · llega a todos los celulares de la zona'});
   if(a.cbc&&a.cbc.stopAt)ev.push({t:a.cbc.stopAt,m:'Difusión detenida en la torre',s:`message_id ${a.cbc.messageId}`});
   if(a.trail&&a.trail.length>1)ev.push({t:Date.now(),m:`Ubicación en vivo actualizada ${a.trail.length-1} veces`,s:'Botón de pánico'});
   if(a.conf)ev.push({t:a.t+3*60000,m:`${a.conf} confirmaciones ciudadanas`,s:'Usuarios cercanos'});
-  for(let i=1;i<=a.ri;i++)ev.push({t:a.t+i*900000/(a.speed||1),m:`Radio ampliado a ${c.radios[i]} km`,s:'Radio dinámico automático'});
+  for(let i=1;i<=a.ri;i++)ev.push({t:a.t+i*lvl(a).stepMin*60000/(a.speed||1),m:`Radio ampliado a ${lvl(a).radios[i]} km`,s:'Radio dinámico automático'});
+  if(a.authorization)ev.push({t:a.authorization.at||a.t,m:`Datos autorizados por ${esc(a.authorization.parentesco)}`,s:esc(a.authorization.by)});
+  if(a.status==='caducada')ev.push({t:a.t+(a.resMin||20)*60000,m:'Caducó sin confirmaciones',s:'Caducidad automática'});
   if(a.status==='resuelta')ev.push({t:a.t+a.resMin*60000,m:'Cerrada como resuelta',s:`Aviso de cierre a ≈${users(a)} usuarios`});
   if(a.status==='retirada')ev.push({t:a.t+a.resMin*60000,m:'Retirada por información falsa',s:'Enviada a revisión'});
   ev.sort((x,y)=>x.t-y.t);const nowT=Date.now();ev.splice(0,ev.length,...ev.filter(e=>e.t<=nowT+1000));
   $('drawer').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="color:var(--mut);font-weight:700">${a.id}</span><button class="btn out sm" onclick="closeDrawer()">✕ Cerrar</button></div>
   <h3><span>${c.ic}</span>${c.n}</h3>
-  <div class="badges"><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>${stBadge(a)}${verBadge(a)}${originBadge(a)}${towerBadge(a)}</div>
+  <div class="badges">${lvlBadge(a)}${stBadge(a)}${verBadge(a)}${privBadge(a0)}${originBadge(a)}${towerBadge(a)}</div>
+  ${a0.hasPrivate?`<div class="sec priv"><h4>🔒 Datos en resguardo</h4><div class="lvlinfo" style="margin-top:0">La comunidad aún no ve la foto ni la descripción. Solo el centro de monitoreo los ve. Publícalos cuando el familiar o tutor lo autorice (LFPDPPP).</div>
+    ${a.status==='activa'?`<div class="row"><input type="text" id="dTutor" placeholder="Nombre de quien autoriza" style="flex:1"><select id="dParen"><option>Madre</option><option>Padre</option><option>Tutor legal</option><option>Familiar directo</option><option>La propia persona</option></select></div>
+    <label class="chk" style="font-size:12px;margin-top:6px"><input type="checkbox" id="dAuthOk"> Verifiqué la identidad y el consentimiento</label>
+    <button class="btn" style="width:100%;margin-top:8px" onclick="authorize('${a.id}')">📢 Publicar datos autorizados</button>`:''}</div>`:''}
+  ${a.authorization?`<div class="sec priv"><h4>✅ Datos publicados con autorización</h4><div class="lvlinfo" style="margin-top:0">Autorizó: <b>${esc(a.authorization.tutor||'—')}</b> (${esc(a.authorization.parentesco)}) · Validó: ${esc(a.authorization.by)}${a.authorization.at?' · '+fmtDate(a.authorization.at):''}</div></div>`:''}
   ${a.photo?`<div class="ph2"><img src="${esc(a.photo)}" alt="Foto enviada desde la app"></div>`:''}
   ${a.desc?`<div class="desc">${esc(a.desc)}</div>`:''}
   <div class="kv">
@@ -767,7 +866,19 @@ function renderDrawer(){
     <div>Radio ${a.status==='activa'?'actual':'máximo'}<b>${radius(a)} km</b></div><div>Usuarios alcanzados<b>≈ ${users(a)}</b></div>
     <div>Duración<b>${a.status==='activa'?'En curso ('+ago(a.t)+')':dur(a.resMin)}</b></div><div>Coordenadas<b style="font-size:12px">${a.lat.toFixed(4)}, ${a.lng.toFixed(4)}</b></div>
   </div>
-  <h4 style="margin-top:6px">Línea de tiempo</h4>
+  <div class="sec"><h4><span>${L.ic} Nivel de alertamiento: ${L.n}</span></h4>
+    <div class="lvlinfo" style="margin-top:0">Radio ${L.radios.join(' → ')} km · se amplía cada ${L.stepMin} min · celular: ${L.notif} · torre: ${L.cbc}</div>
+    ${a.live&&a.status==='activa'?`<div class="row"><select id="dLvl">${Object.keys(LEVELS).map(k=>`<option value="${k}" ${k===a.level?'selected':''}>${LEVELS[k].ic} ${LEVELS[k].n}</option>`).join('')}</select><button class="btn sm sec" onclick="setLevel('${a.id}')">Cambiar nivel</button></div>`:''}
+  </div>
+  ${a.trust!=null?`<div class="sec"><h4><span>Índice de confiabilidad</span><b style="color:${tcol(a.trust)}">${a.trust}/100</b></h4>
+    <div class="tbar"><span style="width:${a.trust}%;background:${tcol(a.trust)}"></span></div>
+    <div class="tparts">${(a.trustParts||[]).map(([k,v])=>`<div><span>${esc(k)}</span><b style="color:${v<0?'#b91c1c':'#15803d'}">${v>0?'+':''}${v}</b></div>`).join('')}</div>
+    ${a.expiresAt&&a.status==='activa'&&!a.verified?`<div class="lvlinfo">⌛ Caduca en <b>${Math.max(0,Math.ceil((a.expiresAt-Date.now())/60000))} min</b> si no recibe al menos 2 confirmaciones.</div>`:''}</div>`:''}
+  ${dv?`<div class="sec ${dv.blocked?'blk':''}"><h4><span>📱 Dispositivo que reportó</span><code style="font-size:11px">${esc(dv.id)}</code></h4>
+    <div class="lvlinfo" style="margin-top:0">Reputación: <b style="color:${dv.rep>=0?'#15803d':'#b91c1c'}">${dv.rep>0?'+':''}${dv.rep}</b> · ${dv.reports} reportes · ${dv.good} confiables · ${dv.bad} falsos${dv.blocked?` · <b style="color:#b91c1c">🚫 BLOQUEADO hasta ${fmtDate(dv.blockedUntil)}</b>`:''}<br>
+    Integridad de la app: ${esc(dv.attest)} <small>(en producción: Play Integrity en Android / App Attest en iOS)</small></div>
+    <div class="row"><button class="btn sm ${dv.blocked?'sec':'out'}" onclick="blockDev('${esc(dv.id)}',${!dv.blocked})">${dv.blocked?'✅ Desbloquear dispositivo':'🚫 Bloquear dispositivo'}</button></div></div>`:''}
+  <h4 style="margin-top:12px">Línea de tiempo</h4>
   <div class="tl">${ev.map(e=>`<div><b>${e.m}</b><small>${fmtDate(e.t)} · ${e.s}</small></div>`).join('')}</div>
   ${a.status==='activa'?`<div style="display:flex;flex-direction:column;gap:8px">
     ${!a.verified?`<button class="btn sec" onclick="act('${a.id}','verificar')">✔ Verificar alerta</button>`:''}
@@ -802,15 +913,15 @@ function renderHistory(){
   <div class="kpi"><div class="l">Usuarios alcanzados</div><div class="v">${d.reduce((s,a)=>s+users(a),0).toLocaleString('es-MX')}</div></div>`;
   $('tbody').innerHTML=d.slice(page*PER,page*PER+PER).map(a=>{const c=CATS[a.cat];return`<tr onclick="openDrawer('${a.id}')">
     <td><b>${a.id}</b></td><td>${fmtDate(a.t)}</td><td>${c.ic} ${c.n}</td><td>${zoneById(a.zone).n}</td>
-    <td><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span></td><td>${a.verified?'✔ ':''}${esc(a.src)}${a.live?' 📱':''}</td><td>${stBadge(a)}</td>
-    <td>${radius(a)} km</td><td>≈${users(a)}</td><td>${a.status==='activa'?'En curso':dur(a.resMin)}</td></tr>`;}).join('')||'<tr><td colspan="10" class="empty">No hay alertas con estos filtros.</td></tr>';
+    <td>${lvlBadge(a)}</td><td>${a.verified?'✔ ':''}${esc(a.src)}${a.live?' 📱':''}</td><td><b style="color:${tcol(a.trust??0)}">${a.trust??'—'}</b></td><td>${stBadge(a)}</td>
+    <td>${radius(a)} km</td><td>≈${users(a)}</td><td>${a.status==='activa'?'En curso':dur(a.resMin)}</td></tr>`;}).join('')||'<tr><td colspan="11" class="empty">No hay alertas con estos filtros.</td></tr>';
   $('pinfo').textContent=`Página ${page+1} de ${pages} · ${d.length} registros`;
   $('prev').disabled=page===0;$('next').disabled=page>=pages-1;
 }
 $('prev').onclick=()=>{page--;renderHistory();};$('next').onclick=()=>{page++;renderHistory();};
 $('csvBtn').onclick=()=>{
   const rows=[['ID','Fecha','Categoria','Tipo','Zona','Nivel','Fuente','Verificada','Estado','Radio max km','Usuarios alcanzados','Duracion min','Latitud','Longitud']]
-    .concat(filtered().map(a=>{const c=CATS[a.cat];return[a.id,new Date(a.t).toLocaleString('es-MX'),c.n,GROUPS[c.g].n,zoneById(a.zone).n,c.lvl,a.src,a.verified?'Si':'No',a.status,radius(a),users(a),a.resMin??'',a.lat.toFixed(5),a.lng.toFixed(5)];}));
+    .concat(filtered().map(a=>{const c=CATS[a.cat];return[a.id,new Date(a.t).toLocaleString('es-MX'),c.n,GROUPS[c.g].n,zoneById(a.zone).n,lvl(a).n,a.src,a.verified?'Si':'No',a.status,radius(a),users(a),a.resMin??'',a.lat.toFixed(5),a.lng.toFixed(5)];}));
   const csv='﻿'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const l=document.createElement('a');l.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));l.download='historial-alerta-cerca.csv';l.click();
   toast('Historial exportado como CSV (se abre en Excel).');

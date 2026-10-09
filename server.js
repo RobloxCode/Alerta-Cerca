@@ -57,7 +57,91 @@ function isAdminReq(req) {
   return loop && !req.headers['cf-connecting-ip'] && !req.headers['x-forwarded-for'];
 }
 const DB = path.join(DIR, 'alertas.json');
-const CAT_KEYS = ['menor', 'adulto', 'vehiculo', 'casa', 'asalto', 'panico', 'incendio', 'inundacion', 'accidente'];
+/* ======================================================================
+   NIVELES DE ALERTAMIENTO (objetivo 3)
+   Cada nivel define: radio inicial y crecimiento, velocidad de expansión,
+   tipo de notificación en el celular y si puede escalar a Cell Broadcast.
+   ====================================================================== */
+const LEVELS = {
+  info:       { n: 'Informativa', radios: [0.5, 1],      stepMin: 30, cbc: 'nunca' },
+  precaucion: { n: 'Precaución',  radios: [1, 2, 3],     stepMin: 20, cbc: 'nunca' },
+  urgente:    { n: 'Urgente',     radios: [1, 3, 5],     stepMin: 15, cbc: 'solo verificada' },
+  critica:    { n: 'Crítica',     radios: [1, 3, 5, 10], stepMin: 10, cbc: 'verificada u oficial' }
+};
+/* CATÁLOGO COMPLETO (las 12 categorías del reto + robo a casa y botón de pánico)
+   lvl = nivel por defecto · personal = contiene datos personales de terceros */
+const CATS = {
+  menor:        { n: 'Desaparicion o posible sustraccion de menor', lvl: 'critica', personal: true },
+  desaparecida: { n: 'Persona desaparecida',                        lvl: 'urgente', personal: true },
+  adulto:       { n: 'Adulto mayor o persona vulnerable extraviada', lvl: 'urgente', personal: true },
+  vehiculo:     { n: 'Robo de vehiculo',                            lvl: 'urgente' },
+  casa:         { n: 'Robo a casa o comercio',                      lvl: 'precaucion' },
+  asalto:       { n: 'Asalto o situacion de riesgo',                lvl: 'urgente' },
+  panico:       { n: 'Boton de panico activado',                    lvl: 'critica' },
+  incendio:     { n: 'Incendio',                                    lvl: 'urgente' },
+  inundacion:   { n: 'Inundacion',                                  lvl: 'urgente' },
+  accidente:    { n: 'Accidente o emergencia relevante',            lvl: 'precaucion' },
+  ambiental:    { n: 'Riesgo ambiental',                            lvl: 'precaucion' },
+  evacuacion:   { n: 'Evacuacion',                                  lvl: 'critica' },
+  fenomeno:     { n: 'Fenomeno natural',                            lvl: 'urgente' },
+  otra:         { n: 'Otra situacion de riesgo',                    lvl: 'info' }
+};
+const CAT_KEYS = Object.keys(CATS);
+
+/* ======================================================================
+   ANTIABUSO Y CONFIABILIDAD (objetivos 7, 8 y 9)
+   ====================================================================== */
+const ANTI = {
+  rateMax: +(process.env.RATE_MAX || 3),        /* reportes máximos por dispositivo… */
+  rateMin: +(process.env.RATE_MIN || 10),       /* …cada N minutos */
+  dupM: +(process.env.DUP_M || 300),            /* antiduplicados: misma categoría a menos de X metros… */
+  dupMin: +(process.env.DUP_MIN || 30),         /* …y Y minutos */
+  expireMin: +(process.env.EXPIRE_MIN || 20),   /* caducidad de reportes ciudadanos no confirmados */
+  blockAfter: +(process.env.BLOCK_AFTER || 2),  /* bloquear dispositivo tras N reportes falsos… */
+  blockHours: +(process.env.BLOCK_HOURS || 24)  /* …durante N horas */
+};
+let devices = {};   /* reputación por identificador anónimo de dispositivo (UUID) */
+const SIM_OWNERS = ['', 'sim', 'monitor'];
+function devOf(id) {
+  id = String(id || '');
+  if (SIM_OWNERS.includes(id)) return null;
+  return devices[id] || (devices[id] = { id, first: Date.now(), reports: 0, good: 0, bad: 0, times: [], blockedUntil: 0 });
+}
+function devRep(d) { return d ? Math.max(-40, Math.min(20, d.good * 8 - d.bad * 20)) : 0; }
+function devPublic(d) {
+  if (!d) return null;
+  return { id: d.id, reports: d.reports, good: d.good, bad: d.bad, rep: devRep(d), blocked: d.blockedUntil > Date.now(), blockedUntil: d.blockedUntil, first: d.first, attest: d.attest || 'no verificada' };
+}
+function distKm(a, b) {
+  const R = 6371, t = Math.PI / 180, dl = (b.lat - a.lat) * t, dg = (b.lng - a.lng) * t;
+  const h = Math.sin(dl / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dg / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+/* Índice de confiabilidad 0–100: confirmaciones, evidencia, historial del dispositivo y reportes de falsedad */
+function computeTrust(a) {
+  const parts = [];
+  if (a.verified) parts.push(['Verificada por ' + (a.verifiedBy || 'autoridad'), 95]);
+  else {
+    parts.push(a.origin === 'monitor' ? ['Emitida por el centro de monitoreo', 60] : ['Reporte ciudadano (base)', 25]);
+    if (a.conf) parts.push([`${a.conf} confirmación(es) "lo vi aquí"`, Math.min(a.conf, 4) * 12]);
+    if (a.photo) parts.push(['Evidencia adjunta (foto)', 10]);
+    if (a.desc && a.desc.length >= 30) parts.push(['Descripción detallada', 5]);
+    const d = devices[a.owner];
+    if (d) parts.push([`Historial del dispositivo (${d.good} confiables, ${d.bad} falsos)`, devRep(d)]);
+    if (a.flags) parts.push([`${a.flags} reporte(s) de información falsa`, -15 * a.flags]);
+  }
+  a.trust = Math.max(0, Math.min(100, parts.reduce((s, x) => s + x[1], 0)));
+  a.trustParts = parts;
+  return a.trust;
+}
+/* Datos autorizados (objetivo 6): la foto y los datos de terceros (personas desaparecidas, menores)
+   no se publican hasta que un operador confirma la autorización del familiar o tutor. */
+function pub(a) {
+  if (!a.restricted) return { ...a, hasPrivate: false };
+  return { ...a, photo: null, hasPrivate: true,
+    desc: 'Reporte de persona en revisión. La foto y los datos se publicarán cuando un operador confirme la autorización del familiar o tutor.' };
+}
+function emit(action, a) { computeTrust(a); broadcast({ type: 'upsert', action, alert: pub(a) }); }
 
 /* ---------- datos ---------- */
 let alerts = [];
@@ -68,13 +152,15 @@ try {
   alerts = d.alerts || [];
   seq = d.seq || 5000;
   cbcSeq = d.cbcSeq ?? null;
+  devices = d.devices || {};
+  alerts.forEach(a => { if (!LEVELS[a.level]) a.level = (CATS[a.cat] || {}).lvl || 'urgente'; });
   console.log(`Cargadas ${alerts.length} alertas de alertas.json`);
 } catch (e) { /* primera ejecución */ }
 
 let saveT = null;
 function save() {
   clearTimeout(saveT);
-  saveT = setTimeout(() => fs.writeFile(DB, JSON.stringify({ seq, cbcSeq, alerts }), () => {}), 500);
+  saveT = setTimeout(() => fs.writeFile(DB, JSON.stringify({ seq, cbcSeq, alerts, devices }), () => {}), 500);
 }
 
 /* ======================================================================
@@ -84,12 +170,12 @@ function save() {
      (la IP y el puerto de la torre se configuran arriba, en config.json)
     CBC_URL         URL completa de la torre (opcional, reemplaza a config.json)
      CBC_ENABLED     1 = enviar, 0 = no enviar
-     CBC_MODE        todas | verificadas | criticas   (qué alertas se mandan a la torre)
+     CBC_MODE        nivel (por defecto: Crítica oficial/verificada y Urgente verificada) | todas
      CBC_FIRST_ID    primer message_id a usar (después se incrementa solo)
    ====================================================================== */
 const CBC = {
   enabled: process.env.CBC_ENABLED !== '0',
-  mode: process.env.CBC_MODE || 'todas',
+  mode: process.env.CBC_MODE || 'nivel', /* nivel = según el nivel de la alerta · todas = enviar todo */
   firstId: +(process.env.CBC_FIRST_ID || 5371),
   cbeName: process.env.CBC_CBE_NAME || 'sistema-alertas-gob',
   repetition: +(process.env.CBC_REPETITION || 10),
@@ -99,22 +185,16 @@ const CBC = {
   stopOnClose: process.env.CBC_STOP === '1', /* 1 = pedir a la torre que deje de repetir al cerrar (DELETE) */
   timeoutMs: 5000
 };
-const CAT_INFO = {
-  menor: ['Desaparicion de menor', 'CRITICO'], adulto: ['Adulto mayor extraviado', 'ALTO'],
-  vehiculo: ['Robo de vehiculo', 'ALTO'], casa: ['Robo a casa o comercio', 'ALTO'],
-  asalto: ['Asalto / situacion de riesgo', 'ALTO'], panico: ['Boton de panico activado', 'CRITICO'],
-  incendio: ['Incendio', 'CRITICO'], inundacion: ['Inundacion', 'MEDIO'], accidente: ['Accidente vial', 'MEDIO']
-};
 /* Las torres usan el alfabeto GSM: se quitan acentos, emojis y caracteres raros */
 function gsmText(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ñ/g, 'n').replace(/Ñ/g, 'N')
     .replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim();
 }
 function cbcMessage(a) {
-  const [name, lvl] = CAT_INFO[a.cat];
-  let t = `ALERTA CERCA ${lvl}: ${name}.`;
+  let t = `ALERTA CERCA ${LEVELS[a.level || 'urgente'].n.toUpperCase()}: ${CATS[a.cat].n}.`;
   t += a.verified ? ' VERIFICADA.' : ' NO CONFIRMADA.';
-  if (a.desc) { const d = String(a.desc).trim(); t += ' ' + d + (/[.!?]$/.test(d) ? '' : '.'); }
+  const d = String(pub(a).desc || '').trim();
+  if (d) t += ' ' + d + (/[.!?]$/.test(d) ? '' : '.');
   t += ` Ubicacion: ${a.lat.toFixed(4)},${a.lng.toFixed(4)}.`;
   t = gsmText(t);
   return t.length > 300 ? t.slice(0, 297) + '...' : t;
@@ -166,16 +246,19 @@ function httpRequest(method, url, data) {
 }
 function shouldSendToTower(a) {
   if (!CBC.enabled || a.status !== 'activa' || (a.cbc && a.cbc.status === 'enviado')) return false;
-  if (CBC.mode === 'verificadas') return a.verified;
-  if (CBC.mode === 'criticas') return CAT_INFO[a.cat][1] === 'CRITICO' || a.verified;
-  return true;
+  if (CBC.mode === 'todas') return true;
+  /* Escalamiento por nivel: la torre llega a TODOS los celulares, por eso se reserva para información confiable */
+  const oficial = a.verified || a.origin === 'monitor';
+  if (a.level === 'critica') return oficial;
+  if (a.level === 'urgente') return a.verified;
+  return false; /* Informativa y Precaución nunca van a la torre */
 }
 async function sendToTower(a, force) {
   if (!force && !shouldSendToTower(a)) return;
   const messageId = nextMessageId();
   let payload = cbcPayload(a, messageId, CBC.warningType);
   a.cbc = { status: 'enviando', messageId, at: Date.now(), message: cbcMessage(a), payload };
-  broadcast({ type: 'upsert', action: 'cbc', alert: a });
+  emit('cbc', a);
   console.log(`   📡 ${a.id} → torre ${towerUrl()} · message_id ${messageId}`);
   let r = await httpRequest('POST', towerUrl(), payload);
   /* si la torre no acepta el tipo de alerta, se reintenta con "earthquake" (el que funcionó en tu prueba con curl) */
@@ -189,7 +272,7 @@ async function sendToTower(a, force) {
   console.log(r.ok ? `   📡 ${a.id} enviada a la torre · message_id ${messageId} · HTTP ${r.status}`
                    : `   ⚠️  ${a.id} NO llegó a la torre · message_id ${messageId} · ${r.status || ''} ${r.text}`);
   save();
-  broadcast({ type: 'upsert', action: 'cbc', alert: a });
+  emit('cbc', a);
 }
 /* Al cerrar o retirar una alerta se pide a la torre que deje de repetirla (si la API lo permite) */
 async function stopTowerBroadcast(a) {
@@ -199,7 +282,7 @@ async function stopTowerBroadcast(a) {
   console.log(r.ok ? `   📡 ${a.id} difusión detenida en la torre (message_id ${a.cbc.messageId})`
                    : `   ℹ️  la torre no confirmó la cancelación de ${a.cbc.messageId} (${r.status || r.text}); se detendrá sola al terminar sus repeticiones`);
   save();
-  broadcast({ type: 'upsert', action: 'cbc', alert: a });
+  emit('cbc', a);
 }
 
 /* ---------- reglas (idénticas en las dos páginas para el modo local) ---------- */
@@ -212,6 +295,11 @@ function makeAlert(b, id) {
     id, cat: b.cat, lat, lng, t: now,
     speed: Math.min(500, Math.max(1, +b.speed || 1)),
     status: 'activa', verified: ver,
+    level: LEVELS[b.level] ? b.level : CATS[b.cat].lvl,
+    restricted: !!CATS[b.cat].personal && !b.authorization,
+    authorization: b.authorization ? { tutor: String(b.authorization.tutor || '').slice(0, 80), parentesco: String(b.authorization.parentesco || '').slice(0, 40), by: String(b.authorization.by || 'Operador').slice(0, 60), at: now } : null,
+    confBy: [], flagBy: [],
+    expiresAt: !ver && b.cat !== 'panico' && b.origin !== 'monitor' ? now + ANTI.expireMin * 60000 : null,
     src: String(b.src || 'Reporte ciudadano').slice(0, 60),
     conf: 0, flags: 0,
     desc: String(b.desc || '').slice(0, 500),
@@ -227,11 +315,34 @@ function makeAlert(b, id) {
 function applyAct(a, act, b) {
   b = b || {};
   const now = Date.now();
+  a.confBy = a.confBy || []; a.flagBy = a.flagBy || [];
   if (a.status !== 'activa') return a;
   switch (act) {
-    case 'confirm': a.conf++; break;
-    case 'flag': a.flags++; if (a.flags >= 3 && !a.verified) { a.status = 'retirada'; a.closedAt = now; } break;
-    case 'verify': a.verified = true; a.verifiedAt = now; a.verifiedBy = String(b.by || 'Operador').slice(0, 60); break;
+    case 'confirm':
+      if (b.owner) {
+        if (b.owner === a.owner) throw new Error('No puedes confirmar tu propio reporte');
+        if (a.confBy.includes(b.owner)) throw new Error('Ya confirmaste esta alerta');
+        a.confBy.push(b.owner); if (a.confBy.length > 500) a.confBy.shift();
+      }
+      a.conf++;
+      if (a.conf >= 2) a.expiresAt = null; /* con 2 confirmaciones ya no caduca */
+      break;
+    case 'flag':
+      if (b.owner) {
+        if (a.flagBy.includes(b.owner)) throw new Error('Ya reportaste esta alerta como falsa');
+        a.flagBy.push(b.owner);
+      }
+      a.flags++; if (a.flags >= 3 && !a.verified) { a.status = 'retirada'; a.closedAt = now; } break;
+    case 'verify': a.verified = true; a.verifiedAt = now; a.expiresAt = null; a.verifiedBy = String(b.by || 'Operador').slice(0, 60); break;
+    case 'level':
+      if (!LEVELS[b.level]) throw new Error('Nivel no válido');
+      a.level = b.level; a.levelBy = String(b.by || 'Operador').slice(0, 60); break;
+    case 'authorize':
+      if (!b.tutor || !b.parentesco) throw new Error('Indica nombre y parentesco del familiar o tutor que autoriza');
+      a.restricted = false;
+      a.authorization = { tutor: String(b.tutor).slice(0, 80), parentesco: String(b.parentesco).slice(0, 40), by: String(b.by || 'Operador').slice(0, 60), at: now };
+      break;
+    case 'expire': a.status = 'caducada'; a.closedAt = now; break;
     case 'resolve': a.status = 'resuelta'; a.closedAt = now; break;
     case 'retire': a.status = 'retirada'; a.closedAt = now; break;
     case 'move': {
@@ -252,6 +363,17 @@ const clients = new Set();
 function sse(res, obj) { res.write(`data: ${JSON.stringify(obj)}\n\n`); }
 function broadcast(obj) { for (const c of clients) sse(c, obj); }
 setInterval(() => { for (const c of clients) c.write(': ping\n\n'); }, 20000);
+
+/* ---------- caducidad automática de reportes no confirmados ---------- */
+setInterval(() => {
+  const now = Date.now();
+  alerts.forEach(a => {
+    if (a.status === 'activa' && a.expiresAt && !a.verified && a.conf < 2 && now >= a.expiresAt) {
+      applyAct(a, 'expire'); save(); emit('expire', a); stopTowerBroadcast(a);
+      console.log(`   ⌛ ${a.id} caducó: nadie lo confirmó en ${ANTI.expireMin} min`);
+    }
+  });
+}, 15000);
 
 /* ---------- utilidades HTTP ---------- */
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
@@ -309,38 +431,110 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
-    if (p === '/api/ping') return json(res, 200, { ok: true, alerts: alerts.length, clients: clients.size, appUrl: appUrl(req), cbc: { enabled: CBC.enabled, url: towerUrl(), mode: CBC.mode, lastId: cbcSeq, nextId: cbcSeq == null ? CBC.firstId : cbcSeq + 1 }, config: CONFIG, admin: isAdminReq(req), fixedByEnv: !!process.env.CBC_URL });
+    if (p === '/api/ping') return json(res, 200, { ok: true, anti: ANTI, levels: LEVELS, alerts: alerts.length, clients: clients.size, appUrl: appUrl(req), cbc: { enabled: CBC.enabled, url: towerUrl(), mode: CBC.mode, lastId: cbcSeq, nextId: cbcSeq == null ? CBC.firstId : cbcSeq + 1 }, config: CONFIG, admin: isAdminReq(req), fixedByEnv: !!process.env.CBC_URL });
 
     if (p === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no', ...CORS });
       res.write('retry: 2000\n\n');
-      sse(res, { type: 'snapshot', alerts });
+      sse(res, { type: 'snapshot', alerts: alerts.map(a => { computeTrust(a); return pub(a); }) });
       clients.add(res);
       console.log(`+ dispositivo conectado (${clients.size})`);
       req.on('close', () => { clients.delete(res); console.log(`- dispositivo desconectado (${clients.size})`); });
       return;
     }
 
-    if (req.method === 'GET' && p === '/api/alerts') return json(res, 200, alerts);
+    if (req.method === 'GET' && p === '/api/alerts') return json(res, 200, alerts.map(pub));
+
+    /* Detalle completo (incluye datos en resguardo y reputación del dispositivo): solo monitoreo */
+    const full = p.match(/^\/api\/alerts\/([\w-]+)\/full$/);
+    if (req.method === 'GET' && full) {
+      if (!isAdminReq(req)) return json(res, 403, { error: 'Solo el centro de monitoreo puede ver los datos completos' });
+      const a = alerts.find(x => x.id === full[1]);
+      if (!a) return json(res, 404, { error: 'la alerta no existe' });
+      computeTrust(a);
+      return json(res, 200, { alert: a, device: devPublic(devices[a.owner]) });
+    }
+
+    /* Bloquear / desbloquear un dispositivo reincidente: solo monitoreo */
+    const dv = p.match(/^\/api\/devices\/([\w-]+)\/(block|unblock)$/);
+    if (req.method === 'POST' && dv) {
+      if (!isAdminReq(req)) return json(res, 403, { error: 'Solo desde el centro de monitoreo' });
+      const d = devices[dv[1]];
+      if (!d) return json(res, 404, { error: 'dispositivo desconocido' });
+      d.blockedUntil = dv[2] === 'block' ? Date.now() + ANTI.blockHours * 3600000 : 0;
+      save();
+      console.log(`   ${dv[2] === 'block' ? '🚫 bloqueado' : '✅ desbloqueado'} dispositivo ${d.id}`);
+      alerts.filter(a => a.owner === d.id && a.status === 'activa').forEach(a => emit('device', a));
+      return json(res, 200, { ok: true, device: devPublic(d) });
+    }
 
     if (req.method === 'POST' && p === '/api/alerts') {
-      const a = makeAlert(await body(req), 'A-' + (++seq));
+      const b = await body(req), admin = isAdminReq(req), now = Date.now();
+      if (b.origin === 'monitor' && !admin) b.origin = 'app';          /* nadie se hace pasar por el monitoreo */
+      if (b.verified && !(admin || b.owner === 'sim')) b.verified = false; /* solo un operador verifica */
+      if (b.authorization && !admin) delete b.authorization;           /* solo un operador autoriza datos de terceros */
+      if (!CAT_KEYS.includes(b.cat)) return json(res, 400, { error: 'categoría inválida' });
+      const d = devOf(b.owner);
+      if (d) {
+        if (d.blockedUntil > now) return json(res, 403, { code: 'blocked', error: `Este dispositivo está bloqueado temporalmente por reportes falsos (hasta ${new Date(d.blockedUntil).toLocaleString('es-MX')}).` });
+        d.times = d.times.filter(t => now - t < ANTI.rateMin * 60000);
+        if (b.cat !== 'panico' && d.times.length >= ANTI.rateMax) return json(res, 429, { code: 'rate', error: `Límite alcanzado: máximo ${ANTI.rateMax} reportes cada ${ANTI.rateMin} minutos por dispositivo.` });
+        d.attest = b.integ === 'web-demo' ? 'simulada (navegador)' : 'no verificada';
+      }
+      /* ANTIDUPLICADOS: misma categoría a menos de dupM metros y dupMin minutos → se suma como confirmación.
+         En producción (PostgreSQL + PostGIS) esta búsqueda es:
+           SELECT id FROM alertas
+            WHERE estado = 'activa' AND categoria = $1
+              AND creada > now() - make_interval(mins => $2)
+              AND ST_DWithin(ubicacion::geography, ST_SetSRID(ST_MakePoint($lng, $lat), 4326)::geography, $3)
+            ORDER BY ubicacion <-> ST_SetSRID(ST_MakePoint($lng, $lat), 4326) LIMIT 1; */
+      if (b.cat !== 'panico' && b.origin !== 'monitor' && isFinite(+b.lat) && isFinite(+b.lng)) {
+        const dup = alerts.filter(x => x.status === 'activa' && x.cat === b.cat && now - x.t <= ANTI.dupMin * 60000 && distKm(x, { lat: +b.lat, lng: +b.lng }) * 1000 <= ANTI.dupM)
+          .sort((x, y) => distKm(x, b) - distKm(y, b))[0];
+        if (dup) {
+          if (dup.owner && dup.owner === b.owner) return json(res, 409, { code: 'own-dup', id: dup.id, error: `Ya reportaste este acontecimiento (está activo como ${dup.id}).` });
+          try { applyAct(dup, 'confirm', { owner: b.owner }); } catch (e) { return json(res, 409, { id: dup.id, error: e.message }); }
+          save(); emit('confirm', dup);
+          console.log(`   ♻️  duplicado de ${dup.id} → sumado como confirmación (${dup.conf})`);
+          return json(res, 200, { merged: true, id: dup.id, alert: pub(dup) });
+        }
+      }
+      const a = makeAlert(b, 'A-' + (++seq));
+      if (d) { d.reports++; d.times.push(now); }
       alerts.push(a); save();
-      broadcast({ type: 'upsert', action: 'create', alert: a });
+      emit('create', a);
       sendToTower(a);
-      console.log(`🔔 ${a.id} ${a.cat} · ${a.origin} · ${a.src}`);
-      return json(res, 201, a);
+      console.log(`🔔 ${a.id} ${a.cat} · ${LEVELS[a.level].n} · ${a.origin} · ${a.src}${a.restricted ? ' · datos en resguardo' : ''}`);
+      return json(res, 201, pub(a));
     }
 
     const m = p.match(/^\/api\/alerts\/([\w-]+)\/(\w+)$/);
     if (req.method === 'POST' && m) {
       const a = alerts.find(x => x.id === m[1]);
       if (!a) return json(res, 404, { error: 'la alerta no existe' });
+      const b = await body(req), admin = isAdminReq(req);
+      if (['verify', 'retire', 'level', 'authorize', 'cbc'].includes(m[2]) && !admin)
+        return json(res, 403, { error: 'Esta acción solo la puede hacer un operador del centro de monitoreo' });
+      if (m[2] === 'resolve' && !admin && !(b.owner && b.owner === a.owner))
+        return json(res, 403, { error: 'Solo quien hizo el reporte o un operador pueden cerrarlo' });
+      if (m[2] === 'move' && !(b.owner && b.owner === a.owner)) return json(res, 403, { error: 'No autorizado' });
+      if (m[2] === 'expire') return json(res, 403, { error: 'No autorizado' });
       if (m[2] === 'cbc') { sendToTower(a, true); return json(res, 202, { ok: true }); }
-      applyAct(a, m[2], await body(req)); save();
-      if (m[2] === 'verify') sendToTower(a);
+      const before = { status: a.status, verified: a.verified };
+      applyAct(a, m[2], b);
+      /* reputación del dispositivo que hizo el reporte */
+      const d = devices[a.owner];
+      if (d) {
+        if (!a._good && ((!before.verified && a.verified) || (admin && before.status === 'activa' && a.status === 'resuelta'))) { a._good = 1; d.good++; }
+        if (!a._bad && before.status === 'activa' && a.status === 'retirada') {
+          a._bad = 1; d.bad++;
+          if (d.bad >= ANTI.blockAfter) { d.blockedUntil = Date.now() + ANTI.blockHours * 3600000; console.log(`   🚫 dispositivo ${d.id} bloqueado ${ANTI.blockHours} h (${d.bad} reportes falsos)`); }
+        }
+      }
+      save();
+      if (m[2] === 'verify' || m[2] === 'level') sendToTower(a);
       if (['resolve', 'retire', 'flag'].includes(m[2]) && a.status !== 'activa') stopTowerBroadcast(a);
-      broadcast({ type: 'upsert', action: m[2], alert: a });
+      emit(m[2], a);
       if (m[2] !== 'move') console.log(`   ${a.id} → ${m[2]} (${a.status})`);
       return json(res, 200, a);
     }
@@ -376,7 +570,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && p === '/api/reset') {
       if (!isAdminReq(req)) return json(res, 403, { error: 'Solo desde la computadora del monitoreo' });
-      alerts = []; save(); broadcast({ type: 'reset' });
+      alerts = []; devices = {}; save(); broadcast({ type: 'reset' });
       console.log('↺ alertas reiniciadas');
       return json(res, 200, { ok: true });
     }
@@ -401,4 +595,5 @@ server.listen(PORT, () => {
   console.log(CBC.enabled
     ? `  Torre (Cell Broadcast): ${towerUrl()}\n                          modo "${CBC.mode}" · siguiente message_id ${cbcSeq == null ? CBC.firstId : cbcSeq + 1}\n`
     : '  Torre (Cell Broadcast): desactivada (CBC_ENABLED=0)\n');
+  console.log(`  Antiabuso: ${ANTI.rateMax} reportes/${ANTI.rateMin} min · duplicados <${ANTI.dupM} m y <${ANTI.dupMin} min · caducidad ${ANTI.expireMin} min · bloqueo tras ${ANTI.blockAfter} falsos\n`);
 });

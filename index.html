@@ -112,6 +112,19 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
 .chips button span{font-size:20px;margin-right:4px}
 .toast{position:absolute;left:12px;right:12px;top:12px;z-index:4000;background:#14161a;color:#fff;border-radius:12px;padding:12px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);transform:translateY(-140%);transition:transform .3s}
 .toast.on{transform:none}
+.toast{cursor:default}
+.kind{border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;margin:8px 0;display:flex;gap:6px;align-items:center;letter-spacing:.2px}
+.kind.ok{background:#dcfce7;color:#14532d;border:1.5px solid #86efac}
+.kind.no{background:#fef3c7;color:#78350f;border:1.5px dashed #f59e0b}
+.kind small{display:block;font-weight:600;opacity:.85}
+.trust{margin:10px 0}
+.trust .tl{display:flex;justify-content:space-between;font-size:12px;color:var(--mut)}
+.trust .tb{height:8px;border-radius:5px;background:#eef0f3;overflow:hidden;margin-top:4px}
+.trust .tb span{display:block;height:100%;border-radius:5px}
+.tparts{font-size:12px;color:#374151;margin-top:6px}
+.tparts div{display:flex;justify-content:space-between;padding:2px 0}
+.lvlinfo{background:#f6f7f9;border-radius:10px;padding:9px 11px;font-size:12px;color:#374151;margin-top:10px;line-height:1.5}
+.privnote{background:#f5f3ff;color:#4c1d95;border-radius:10px;padding:9px 11px;font-size:12px;margin-top:10px;line-height:1.45;display:none}
 .priv{position:absolute;inset:0;z-index:4500;background:rgba(10,12,16,.75);display:flex;align-items:flex-end}
 .priv.hidden{display:none}
 .pbox{background:#fff;width:100%;max-height:92%;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px 18px 22px;animation:up .3s}
@@ -178,6 +191,8 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       <form id="repForm">
         <label class="l">¿Qué está pasando?</label>
         <select id="repCat" required></select>
+        <div class="lvlinfo" id="repLvl"></div>
+        <div class="privnote" id="repPriv">🔒 <b>Datos de terceros:</b> la foto y la descripción de la persona llegarán solo al centro de monitoreo. Se publicarán a la comunidad cuando un operador verificado confirme la autorización de su familiar o tutor.</div>
         <label class="l">Descripción</label>
         <textarea id="repDesc" placeholder="Características, ropa, placas, dirección hacia donde se fue..." required></textarea>
         <label class="l">Fotografía (opcional)</label>
@@ -196,11 +211,13 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       <div class="pi"><span class="e">📨</span><div><b>Solo se comparte cuando tú lo decides:</b> al hacer un reporte o activar el botón de pánico se envía la ubicación de ese momento.</div></div>
       <div class="pi"><span class="e">🆘</span><div><b>Botón de pánico:</b> mientras está activo, tu ubicación en vivo se comparte con tus contactos y el centro de monitoreo. Se detiene al marcar "Estoy a salvo".</div></div>
       <div class="pi"><span class="e">📷</span><div><b>Fotos y descripciones</b> de tus reportes las verán la comunidad y las autoridades. No publiques datos de otras personas sin su permiso.</div></div>
+      <div class="pi"><span class="e">🧒</span><div><b>Datos de terceros:</b> la foto y los datos de una persona desaparecida (sobre todo de menores) solo se publican cuando un operador verificado confirma la autorización de su familiar o tutor. Mientras tanto quedan en resguardo.</div></div>
       <div class="pi"><span class="e">🚫</span><div><b>No vendemos ni compartimos tus datos</b> con fines comerciales. No necesitas cuenta, nombre ni número de teléfono.</div></div>
       <details open><summary>Leer aviso de privacidad completo</summary>
         <p><b>Responsable:</b> Consejo Coordinador Empresarial de Lázaro Cárdenas (prototipo HackaITLAC 2026).</p>
         <p><b>Datos que se tratan:</b> ubicación aproximada del dispositivo (solo en el dispositivo), y en reportes: categoría, descripción, fotografía opcional, ubicación y hora. Se usa un identificador anónimo del dispositivo para evitar reportes duplicados.</p>
         <p><b>Finalidades:</b> difundir alertas comunitarias por proximidad, validar reportes, coordinar la respuesta con autoridades y generar estadísticas anónimas de zonas de riesgo.</p>
+        <p><b>Datos de terceros y menores:</b> los datos personales de personas desaparecidas o extraviadas solo se difunden con el consentimiento de su familiar o tutor, validado por un operador del centro de monitoreo, que registra quién autorizó y cuándo.</p>
         <p><b>Conservación:</b> las alertas cerradas se conservan para estadística sin datos que identifiquen a quien reportó.</p>
         <p><b>Tus derechos:</b> puedes acceder, rectificar, cancelar u oponerte al uso de tus datos (derechos ARCO) escribiendo a cce.lazarocardenas@gmail.com, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
         <p><b>Cambiar tu decisión:</b> usa los ajustes de esta sección en cualquier momento.</p>
@@ -248,6 +265,7 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
     <div class="ov-bg" id="ovBg"></div>
     <div class="ov-box">
       <div class="ov-top" id="ovTop">⚠ ALERTA CERCA DE TI</div>
+      <div id="ovKind"></div>
       <div class="ov-ic" id="ovIc"></div>
       <h2 id="ovT"></h2>
       <div class="ov-meta" id="ovMeta"></div>
@@ -267,11 +285,13 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       <div class="pi"><span class="e">📨</span><div><b>Solo se comparte cuando tú lo decides:</b> al hacer un reporte o activar el botón de pánico se envía la ubicación de ese momento.</div></div>
       <div class="pi"><span class="e">🆘</span><div><b>Botón de pánico:</b> mientras está activo, tu ubicación en vivo se comparte con tus contactos y el centro de monitoreo. Se detiene al marcar "Estoy a salvo".</div></div>
       <div class="pi"><span class="e">📷</span><div><b>Fotos y descripciones</b> de tus reportes las verán la comunidad y las autoridades. No publiques datos de otras personas sin su permiso.</div></div>
+      <div class="pi"><span class="e">🧒</span><div><b>Datos de terceros:</b> la foto y los datos de una persona desaparecida (sobre todo de menores) solo se publican cuando un operador verificado confirma la autorización de su familiar o tutor. Mientras tanto quedan en resguardo.</div></div>
       <div class="pi"><span class="e">🚫</span><div><b>No vendemos ni compartimos tus datos</b> con fines comerciales. No necesitas cuenta, nombre ni número de teléfono.</div></div>
       <details><summary>Leer aviso de privacidad completo</summary>
         <p><b>Responsable:</b> Consejo Coordinador Empresarial de Lázaro Cárdenas (prototipo HackaITLAC 2026).</p>
         <p><b>Datos que se tratan:</b> ubicación aproximada del dispositivo (solo en el dispositivo), y en reportes: categoría, descripción, fotografía opcional, ubicación y hora. Se usa un identificador anónimo del dispositivo para evitar reportes duplicados.</p>
         <p><b>Finalidades:</b> difundir alertas comunitarias por proximidad, validar reportes, coordinar la respuesta con autoridades y generar estadísticas anónimas de zonas de riesgo.</p>
+        <p><b>Datos de terceros y menores:</b> los datos personales de personas desaparecidas o extraviadas solo se difunden con el consentimiento de su familiar o tutor, validado por un operador del centro de monitoreo, que registra quién autorizó y cuándo.</p>
         <p><b>Conservación:</b> las alertas cerradas se conservan para estadística sin datos que identifiquen a quien reportó.</p>
         <p><b>Tus derechos:</b> puedes acceder, rectificar, cancelar u oponerte al uso de tus datos (derechos ARCO) escribiendo a cce.lazarocardenas@gmail.com, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
         <p><b>Cambiar tu decisión:</b> toca el candado 🔒 de arriba en cualquier momento.</p>
@@ -291,19 +311,31 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const CATS={
-  menor:{n:'Desaparición de menor',ic:'🧒',lvl:'Crítico',col:'#d62828',radios:[1,3,5,10],desc:'Niño de 7 años, playera roja y short azul. Visto por última vez frente a la escuela primaria.'},
-  adulto:{n:'Adulto mayor extraviado',ic:'👴',lvl:'Alto',col:'#e85d04',radios:[1,3,5],desc:'Señor de 78 años, camisa blanca, usa bastón. Padece Alzheimer y puede estar desorientado.'},
-  vehiculo:{n:'Robo de vehículo',ic:'🚗',lvl:'Alto',col:'#e85d04',radios:[2,5,10],desc:'Camioneta gris, placas MXX-123-A. Se dirige hacia la carretera federal.'},
-  casa:{n:'Robo a casa o comercio',ic:'🏠',lvl:'Alto',col:'#e85d04',radios:[1,2],desc:'Robo a comercio. Dos personas huyeron a pie hacia la avenida principal.'},
-  asalto:{n:'Asalto / situación de riesgo',ic:'⚠️',lvl:'Alto',col:'#e85d04',radios:[1,2],desc:'Asalto a transeúnte por dos personas en motocicleta negra.'},
-  incendio:{n:'Incendio',ic:'🔥',lvl:'Crítico',col:'#d62828',radios:[1,2,3],desc:'Incendio en terreno baldío con humo denso. Evite la zona y cierre ventanas.'},
-  inundacion:{n:'Inundación',ic:'🌊',lvl:'Medio',col:'#1d6fb8',radios:[2,5],desc:'Calle inundada, no transitable para autos pequeños.'},
-  accidente:{n:'Accidente vial',ic:'🚑',lvl:'Medio',col:'#1d6fb8',radios:[1,2],desc:'Choque entre dos vehículos, un carril bloqueado.'},
-  panico:{n:'Botón de pánico activado',ic:'🆘',lvl:'Crítico',col:'#9d0208',radios:[0.5,1,2],desc:'Un usuario cercano activó su botón de pánico y podría necesitar ayuda.'}
+/* NIVELES DE ALERTAMIENTO: definen radio, velocidad de expansión, tipo de aviso y uso de la torre */
+const LEVELS={
+  info:      {n:'Informativa',ic:'ℹ️',col:'#2563eb',radios:[0.5,1],    stepMin:30,notif:'Aviso discreto en la lista',cbc:'No se usa'},
+  precaucion:{n:'Precaución', ic:'⚠️',col:'#d97706',radios:[1,2,3],    stepMin:20,notif:'Banner con tono suave',cbc:'No se usa'},
+  urgente:   {n:'Urgente',    ic:'🔶',col:'#ea580c',radios:[1,3,5],    stepMin:15,notif:'Pantalla completa con alarma',cbc:'Solo si un operador la verifica'},
+  critica:   {n:'Crítica',    ic:'🚨',col:'#dc2626',radios:[1,3,5,10], stepMin:10,notif:'Pantalla completa, sirena y vibración larga',cbc:'Sí, si es oficial o verificada'}
 };
-const SPEED=90; /* demo: cada paso de radio dura 10 s en lugar de 15 min */
-const STEP_MS=900000;
+/* CATÁLOGO COMPLETO (las 12 categorías del reto + robo a casa y pánico) */
+const CATS={
+  menor:       {n:'Desaparición o posible sustracción de menor',ic:'🧒',g:'Personas',lvl:'critica',personal:true,col:'#d62828',desc:'Niño de 7 años, playera roja y short azul. Visto por última vez frente a la escuela primaria.'},
+  desaparecida:{n:'Persona desaparecida',ic:'🧍',g:'Personas',lvl:'urgente',personal:true,col:'#7c3aed',desc:'Joven de 19 años, sudadera gris. No regresó a casa desde ayer por la tarde.'},
+  adulto:      {n:'Adulto mayor o persona vulnerable extraviada',ic:'👴',g:'Personas',lvl:'urgente',personal:true,col:'#7c3aed',desc:'Señor de 78 años, camisa blanca, usa bastón. Padece Alzheimer y puede estar desorientado.'},
+  vehiculo:    {n:'Robo de vehículo',ic:'🚗',g:'Seguridad',lvl:'urgente',col:'#e85d04',desc:'Camioneta gris, placas MXX-123-A. Se dirige hacia la carretera federal.'},
+  casa:        {n:'Robo a casa o comercio',ic:'🏠',g:'Seguridad',lvl:'precaucion',col:'#e85d04',desc:'Robo a comercio. Dos personas huyeron a pie hacia la avenida principal.'},
+  asalto:      {n:'Asalto o situación de riesgo',ic:'⚠️',g:'Seguridad',lvl:'urgente',col:'#9d0208',desc:'Asalto a transeúnte por dos personas en motocicleta negra.'},
+  incendio:    {n:'Incendio',ic:'🔥',g:'Siniestros y emergencias',lvl:'urgente',col:'#d62828',desc:'Incendio en terreno baldío con humo denso. Evite la zona y cierre ventanas.'},
+  accidente:   {n:'Accidente o emergencia relevante',ic:'🚑',g:'Siniestros y emergencias',lvl:'precaucion',col:'#0f766e',desc:'Choque entre dos vehículos, un carril bloqueado.'},
+  evacuacion:  {n:'Evacuación',ic:'🏃',g:'Siniestros y emergencias',lvl:'critica',col:'#b91c1c',desc:'Evacuación preventiva por fuga de gas. Siga las indicaciones de Protección Civil.'},
+  inundacion:  {n:'Inundación',ic:'🌊',g:'Fenómenos naturales y riesgos ambientales',lvl:'urgente',col:'#1d6fb8',desc:'Calle inundada, no transitable para autos pequeños.'},
+  fenomeno:    {n:'Fenómeno natural',ic:'🌀',g:'Fenómenos naturales y riesgos ambientales',lvl:'urgente',col:'#1d4ed8',desc:'Tormenta con vientos fuertes. Asegure objetos sueltos y evite salir.'},
+  ambiental:   {n:'Riesgo ambiental',ic:'☣️',g:'Fenómenos naturales y riesgos ambientales',lvl:'precaucion',col:'#4d7c0f',desc:'Humo y olor químico cerca de la zona industrial. Cierre ventanas.'},
+  otra:        {n:'Otra situación de riesgo',ic:'📌',g:'Otras',lvl:'info',col:'#6b7280',desc:'Cable de luz caído sobre la banqueta. Evite el paso.'},
+  panico:      {n:'Botón de pánico activado',ic:'🆘',g:'Personas',lvl:'critica',col:'#9d0208',desc:'Un usuario cercano activó su botón de pánico y podría necesitar ayuda.'}
+};
+const SPEED=90; /* demo: el tiempo de expansión corre 90 veces más rápido (15 min → 10 s) */
 const CONTACTS=[{n:'Mamá',i:'M'},{n:'Papá',i:'P'},{n:'Hermana',i:'H'}];
 let me={lat:17.9583,lng:-102.1944}, alerts=[], map=null, meMarker=null, muted=false, actx=null, ovQueue=[], ovShowing=null, openId=null, flyMine=false;
 const $=id=>document.getElementById(id);
@@ -315,25 +347,40 @@ function dist(a,b){const R=6371,t=Math.PI/180,dl=(b.lat-a.lat)*t,dg=(b.lng-a.lng
 function offset(p,km,deg){const b=deg*Math.PI/180;return{lat:p.lat+km/111*Math.cos(b),lng:p.lng+km/(111*Math.cos(p.lat*Math.PI/180))*Math.sin(b)};}
 function fmtKm(k){return k<1?Math.round(k*1000)+' m':k.toFixed(1)+' km';}
 function ago(t){const s=Math.max(0,Math.floor((Date.now()-t)/1000));if(s<60)return'hace '+s+' s';const m=Math.floor(s/60);if(m<60)return'hace '+m+' min';return'hace '+Math.floor(m/60)+' h';}
-function ri(a){const R=CATS[a.cat].radios,end=a.closedAt||Date.now();return Math.min(R.length-1,Math.max(0,Math.floor((end-a.t)*(a.speed||1)/STEP_MS)));}
-function radius(a){return CATS[a.cat].radios[ri(a)];}
+function lvl(a){return LEVELS[a.level]||LEVELS[(CATS[a.cat]||{}).lvl]||LEVELS.urgente;}
+function stepMs(a){return lvl(a).stepMin*60000/(a.speed||1);}
+function ri(a){const R=lvl(a).radios,end=a.closedAt||Date.now();return Math.min(R.length-1,Math.max(0,Math.floor((end-a.t)/stepMs(a))));}
+function radius(a){return lvl(a).radios[ri(a)];}
 function users(r){return Math.round(Math.PI*r*r*38);}
 function lvlClass(l){return l==='Crítico'?'c':l==='Alto'?'a':'m';}
-function toast(msg){const t=$('toast');t.innerHTML=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3400);}
+function toast(msg,fn,ms){const t=$('toast');t.innerHTML=msg;t.classList.add('on');t.onclick=fn?()=>{t.classList.remove('on');fn();}:null;t.style.cursor=fn?'pointer':'default';clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),ms||3400);}
+function lvlBadge(a){const L=lvl(a);return`<span class="bdg" style="background:${L.col};color:#fff">${L.ic} ${L.n}</span>`;}
 function badges(a){
-  const c=CATS[a.cat];let h=`<span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>`;
+  let h=lvlBadge(a);
   if(a.status==='resuelta')h+='<span class="bdg r">Resuelta</span>';
-  else if(a.verified)h+='<span class="bdg v">✔ Verificada</span>';
-  else if(a.conf>=3)h+='<span class="bdg v">Confirmada por comunidad</span>';
-  else h+='<span class="bdg u">No confirmada</span>';
+  else if(a.verified)h+='<span class="bdg v">✔ Alerta verificada</span>';
+  else h+='<span class="bdg u">Reporte ciudadano</span>';
+  if(a.hasPrivate)h+='<span class="bdg r">🔒 Datos en resguardo</span>';
   return h;
+}
+/* Distinción clara para el ciudadano: alerta verificada vs reporte sin confirmar */
+function kindBanner(a){
+  return a.verified
+    ?`<div class="kind ok">✔ ALERTA VERIFICADA<small>&nbsp;· ${esc(a.verifiedBy||a.src)}</small></div>`
+    :`<div class="kind no">⚠ REPORTE CIUDADANO SIN CONFIRMAR<small>&nbsp;· verifica antes de actuar</small></div>`;
+}
+function trustLbl(t){return t>=70?'alta':t>=40?'media':'baja';}
+function trustBar(a,detail){
+  if(a.trust==null)return'';const t=a.trust,col=t>=70?'#15803d':t>=40?'#d97706':'#b91c1c';
+  return`<div class="trust"><div class="tl"><span>Índice de confiabilidad</span><b style="color:${col}">${t}/100 · ${trustLbl(t)}</b></div><div class="tb"><span style="width:${t}%;background:${col}"></span></div>
+  ${detail&&a.trustParts?`<div class="tparts">${a.trustParts.map(([k,v])=>`<div><span>${esc(k)}</span><b style="color:${v<0?'#b91c1c':'#15803d'}">${v>0?'+':''}${v}</b></div>`).join('')}</div>`:''}</div>`;
 }
 
 /* ================= SINCRONIZACIÓN =================
    Modo servidor: si la página se abrió desde server.js, todo pasa por /api y llega a
    todos los dispositivos por Server-Sent Events.
    Modo local: si se abrió como archivo, se sincroniza solo entre pestañas del mismo navegador. */
-const KEYS=['id','cat','lat','lng','t','speed','status','verified','src','conf','flags','desc','photo','origin','owner','verifiedAt','verifiedBy','closedAt','trail'];
+const KEYS=['id','cat','lat','lng','t','speed','status','verified','src','conf','flags','desc','photo','origin','owner','verifiedAt','verifiedBy','closedAt','trail','level','trust','trustParts','hasPrivate','expiresAt','authorization','cbc'];
 const Sync={mode:'local',bc:null};
 /* Dirección del servidor de monitoreo. Se prueba en este orden:
    1) ?server=https://...  en la URL (así llega desde el QR de GitHub Pages)
@@ -359,7 +406,7 @@ function plain(a){const o={};KEYS.forEach(k=>o[k]=a[k]===undefined?null:JSON.par
 function makeAlert(b,id){ /* mismas reglas que server.js */
   if(!CATS[b.cat])throw new Error('categoría inválida');
   const now=Date.now(),ver=!!b.verified;
-  return{id,cat:b.cat,lat:+b.lat,lng:+b.lng,t:now,speed:Math.min(500,Math.max(1,+b.speed||1)),status:'activa',verified:ver,src:String(b.src||'Reporte ciudadano').slice(0,60),conf:0,flags:0,desc:String(b.desc||'').slice(0,500),photo:b.photo||null,origin:String(b.origin||'app'),owner:String(b.owner||''),verifiedAt:ver?now:null,verifiedBy:ver?b.src:null,closedAt:null,trail:b.cat==='panico'?[[+b.lat,+b.lng]]:null};
+  return{id,cat:b.cat,lat:+b.lat,lng:+b.lng,t:now,speed:Math.min(500,Math.max(1,+b.speed||1)),status:'activa',verified:ver,src:String(b.src||'Reporte ciudadano').slice(0,60),conf:0,flags:0,desc:String(b.desc||'').slice(0,500),photo:b.photo||null,origin:String(b.origin||'app'),owner:String(b.owner||''),verifiedAt:ver?now:null,verifiedBy:ver?b.src:null,closedAt:null,trail:b.cat==='panico'?[[+b.lat,+b.lng]]:null,level:LEVELS[b.level]?b.level:CATS[b.cat].lvl,trust:null};
 }
 function applyAct(a,act,b){
   b=b||{};const now=Date.now();if(a.status!=='activa')return a;
@@ -369,6 +416,7 @@ function applyAct(a,act,b){
   else if(act==='resolve'){a.status='resuelta';a.closedAt=now;}
   else if(act==='retire'){a.status='retirada';a.closedAt=now;}
   else if(act==='move'){a.lat=+b.lat;a.lng=+b.lng;if(a.trail){a.trail.push([a.lat,a.lng]);if(a.trail.length>300)a.trail.shift();}}
+  else if(act==='level'&&LEVELS[b.level])a.level=b.level;
   return a;
 }
 function setConn(s){const c=$('conn');c.className='conn'+(s==='on'?' on':s==='bad'?' bad':'');c.textContent=s==='on'?'● EN LÍNEA':s==='bad'?'SIN CONEXIÓN':'MODO LOCAL';}
@@ -400,14 +448,18 @@ async function initSync(){
 }
 async function send(path,body){
   if(Sync.mode==='server'){
-    try{const r=await fetch(API+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});if(!r.ok)throw new Error((await r.json()).error);}
-    catch(e){toast('⚠️ No se pudo enviar al servidor: '+esc(e.message||'sin conexión'));}
-    return;
+    try{
+      const r=await fetch(API+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+      const data=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(data.error||'error del servidor');
+      return data;
+    }catch(e){toast('⚠️ '+esc(e.message||'Sin conexión con el servidor'),null,5000);return null;}
   }
   let ev;
   if(path==='alerts')ev={type:'upsert',action:'create',alert:makeAlert(body,'A-L'+Math.random().toString(36).slice(2,6).toUpperCase())};
   else{const [,id,act]=path.split('/');const cur=alerts.find(x=>x.id===id);if(!cur)return;ev={type:'upsert',action:act,alert:applyAct(plain(cur),act,body)};}
   onEvent(ev);try{Sync.bc&&Sync.bc.postMessage(ev);}catch(e){}
+  return ev.alert;
 }
 function onEvent(ev){
   if(ev.type==='snapshot'){ev.alerts.forEach(d=>upsert(d,'snapshot',true));refresh();return;}
@@ -419,9 +471,9 @@ function upsert(d,action,silent){
   if(isNew){a={notified:false,warned:false};alerts.unshift(a);}
   Object.assign(a,d);a.mine=a.owner===DEV;a._ri=ri(a);
   const c=CATS[a.cat];
-  if(a.status==='retirada'){
+  if(a.status==='retirada'||a.status==='caducada'){
     removeLayers(a);alerts=alerts.filter(x=>x!==a);
-    if(!silent&&(a.notified||a.mine||openId===a.id))toast('🚩 Alerta retirada por información falsa. Pasa a revisión.');
+    if(!silent&&(a.notified||a.mine||openId===a.id))toast(a.status==='caducada'?`⌛ ${a.mine?'Tu reporte':'El reporte'} de ${CATS[a.cat].n.toLowerCase()} caducó: nadie lo confirmó a tiempo.`:'🚩 Alerta retirada por información falsa. Pasa a revisión.',null,4500);
     if(openId===a.id)closeSheet();refresh();return;
   }
   draw(a);
@@ -429,28 +481,37 @@ function upsert(d,action,silent){
     if(silent){a.warned=true;if(a.status==='activa'&&dist(me,a)<=radius(a))a.notified=true;}
     else if(a.mine){
       if(a.cat==='panico'){if(panic&&!panic.alertId)panic.alertId=a.id;}
-      else if(flyMine){flyMine=false;go('mapa');if(map)map.flyTo([a.lat,a.lng],14);toast(`📨 Reporte enviado como NO CONFIRMADO a ≈ ${users(radius(a))} usuarios en ${radius(a)} km y al centro de monitoreo.`);}
+      else if(flyMine){flyMine=false;go('mapa');if(map)map.flyTo([a.lat,a.lng],14);
+        toast(a.hasPrivate?'📨 Tu reporte llegó al centro de monitoreo. La foto y los datos se publicarán cuando un operador confirme la autorización del familiar o tutor.':`📨 Reporte enviado como <b>reporte ciudadano sin confirmar</b> (${lvl(a).n}) a ≈ ${users(radius(a))} usuarios en ${radius(a)} km.`,null,5000);}
     }
     else checkNotify(a);
   }else if(!silent){
     if(action==='verify'&&(a.notified||a.mine))toast(`✔ ${c.n}: verificada por ${esc(a.verifiedBy||'autoridad')}`);
     if(action==='resolve'&&(a.notified||a.mine)&&a.cat!=='panico')toast(`✅ Resuelta: ${c.n}. Gracias por tu colaboración.`);
     if(action==='resolve'&&a.cat==='panico'&&!a.mine&&a.notified)toast('✅ La persona que activó el pánico ya está a salvo.');
-    if(action==='confirm'&&a.mine&&a.conf===3&&!a.verified)toast('✔ Tu reporte fue confirmado por la comunidad');
+    if(action==='confirm'&&a.mine&&!a.verified)toast(`📍 Alguien confirmó tu reporte (${a.conf}). Confiabilidad: ${a.trust}/100.`);
+    if(action==='level'&&(a.notified||a.mine)){toast(`${lvl(a).ic} El nivel de "${c.n}" cambió a <b>${lvl(a).n}</b>.`);if(!a.mine&&!a.ovShown&&['urgente','critica'].includes(a.level)&&dist(me,a)<=radius(a))showOverlay(a);}
+    if(action==='authorize'&&(a.notified||a.mine))toast(`📢 Se publicaron los datos autorizados de: ${c.n}.`,()=>openSheet(a.id),5000);
     if(action==='cbc'&&a.mine&&a.cbc&&a.cbc.status==='enviado')toast(`📡 Tu alerta se está transmitiendo por la torre celular a todos los teléfonos de la zona (mensaje #${a.cbc.messageId}).`);
   }
   refresh();if(openId===a.id)renderSheet();
 }
 
 /* ---------- sonido tipo alerta sísmica ---------- */
-function siren(){
-  if(navigator.vibrate)navigator.vibrate([500,200,500,200,900]);
+/* Sonido según nivel: Precaución = tono suave · Urgente = alarma corta · Crítica = sirena larga */
+function tone(type,steps,dur,vol){
   if(muted)return;
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();
-    const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type='square';
-    for(let i=0;i<8;i++)o.frequency.setValueAtTime(i%2?700:950,t+i*.3);
-    g.gain.setValueAtTime(.07,t);g.gain.setValueAtTime(0,t+2.4);
-    o.connect(g).connect(actx.destination);o.start(t);o.stop(t+2.5);}catch(e){}
+    const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type=type;
+    steps.forEach((f,i)=>o.frequency.setValueAtTime(f,t+i*dur));
+    g.gain.setValueAtTime(vol,t);g.gain.setValueAtTime(0,t+steps.length*dur);
+    o.connect(g).connect(actx.destination);o.start(t);o.stop(t+steps.length*dur+.05);}catch(e){}
+}
+function siren(level){
+  if(level==='precaucion'){if(navigator.vibrate)navigator.vibrate(200);tone('sine',[880,1320],.22,.08);return;}
+  if(level==='urgente'){if(navigator.vibrate)navigator.vibrate([400,150,400]);tone('square',[950,700,950,700],.3,.06);return;}
+  if(navigator.vibrate)navigator.vibrate([600,200,600,200,600,200,1200]);
+  tone('square',[950,700,950,700,950,700,950,700],.3,.08);
 }
 document.addEventListener('pointerdown',()=>{try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume();}catch(e){}},{once:true});
 $('muteBtn').onclick=()=>{muted=!muted;$('muteBtn').textContent=muted?'🔇':'🔊';toast(muted?'Sonido desactivado (seguirá vibrando)':'Sonido activado');};
@@ -483,7 +544,7 @@ function removeLayers(a){if(map&&a.circle){map.removeLayer(a.circle);map.removeL
 function checkNotify(a){
   if(a.mine||a.notified||a.status!=='activa')return;
   const d=dist(me,a);
-  if(d<=radius(a)){a.notified=true;showOverlay(a);}
+  if(d<=radius(a)){a.notified=true;notifyByLevel(a,d);}
   else if(!a.warned){a.warned=true;toast(`Nueva alerta a ${fmtKm(d)}, fuera del radio actual (${radius(a)} km). Si no se resuelve, el radio crecerá.`);}
 }
 setInterval(()=>{
@@ -497,14 +558,22 @@ setInterval(()=>{
   if(openId)renderSheet();refresh();
 },1000);
 
+function notifyByLevel(a,d){
+  const c=CATS[a.cat];
+  if(a.level==='info'){toast(`ℹ️ <b>Aviso informativo</b> a ${fmtKm(d)}: ${c.n}. Toca para ver.`,()=>openSheet(a.id),4500);return;}
+  if(a.level==='precaucion'){siren('precaucion');toast(`<b>⚠️ Precaución cerca de ti</b><br>${c.ic} ${c.n} a ${fmtKm(d)} · ${a.verified?'✔ verificada':'reporte ciudadano'}<br><small>Toca para ver detalles</small>`,()=>openSheet(a.id),6000);return;}
+  showOverlay(a);
+}
 function showOverlay(a){
   if(ovShowing){ovQueue.push(a);return;}
-  ovShowing=a;const c=CATS[a.cat];
-  $('ovBg').style.background=c.col;$('ovTop').style.background=c.col;
+  ovShowing=a;a.ovShown=true;const c=CATS[a.cat],L=lvl(a);
+  $('ovBg').style.background=L.col;$('ovTop').style.background=L.col;
+  $('ovTop').textContent=`${L.ic} ALERTA ${L.n.toUpperCase()} CERCA DE TI`;
+  $('ovKind').innerHTML=kindBanner(a);
   $('ovIc').textContent=c.ic;$('ovT').textContent=c.n;
   $('ovMeta').textContent=`A ${fmtKm(dist(me,a))} de ti · ${ago(a.t)} · ${a.src}`;
-  $('ovD').textContent=a.desc||c.desc;$('ovB').innerHTML=badges(a);
-  $('ov').classList.remove('hidden');siren();
+  $('ovD').textContent=a.desc||c.desc;$('ovB').innerHTML=badges(a)+trustBar(a);
+  $('ov').classList.remove('hidden');siren(a.level);
 }
 function closeOverlay(){$('ov').classList.add('hidden');ovShowing=null;if(ovQueue.length)setTimeout(()=>showOverlay(ovQueue.shift()),400);}
 $('ovOk').onclick=closeOverlay;
@@ -518,7 +587,7 @@ function refresh(){
   const list=$('list');
   if(!alerts.length){list.innerHTML='<div class="empty">Sin alertas por ahora.<br>Usa “Simular alerta” en el mapa.</div>';return;}
   const s=[...alerts].sort((x,y)=>(x.status!==y.status?(x.status==='activa'?-1:1):dist(me,x)-dist(me,y)));
-  list.innerHTML=s.map(a=>{const c=CATS[a.cat];return`<div class="card ${a.status!=='activa'?'closed':''}" style="border-left-color:${c.col}" onclick="openSheet('${a.id}')"><div class="ic">${c.ic}</div><div class="bd"><h4>${c.n}${a.mine?' (tuya)':''}</h4><div class="m">${fmtKm(dist(me,a))} · ${ago(a.t)} · radio ${radius(a)} km</div><div class="badges">${badges(a)}</div></div></div>`;}).join('');
+  list.innerHTML=s.map(a=>{const c=CATS[a.cat];return`<div class="card ${a.status!=='activa'?'closed':''}" style="border-left-color:${lvl(a).col};${a.verified?'':'border-left-style:dashed'}" onclick="openSheet('${a.id}')"><div class="ic">${c.ic}</div><div class="bd"><h4>${c.n}${a.mine?' (tuya)':''}</h4><div class="m">${fmtKm(dist(me,a))} · ${ago(a.t)} · radio ${radius(a)} km${a.trust!=null&&!a.verified?` · confiabilidad ${a.trust}`:''}</div><div class="badges">${badges(a)}</div></div></div>`;}).join('');
 }
 
 /* ---------- hoja de detalle ---------- */
@@ -527,13 +596,18 @@ function closeSheet(){openId=null;$('shade').classList.add('hidden');}
 $('shade').onclick=e=>{if(e.target.id==='shade')closeSheet();};
 function renderSheet(){
   const a=alerts.find(x=>x.id===openId);if(!a){closeSheet();return;}
-  const c=CATS[a.cat],R=c.radios,r=ri(a),step=STEP_MS/(a.speed||1);
+  const c=CATS[a.cat],L=lvl(a),R=L.radios,r=ri(a),step=stepMs(a);
   let next='Radio máximo';
   if(r<R.length-1&&a.status==='activa'){const s=Math.ceil((step-((Date.now()-a.t)%step))/1000);next=(s>90?Math.ceil(s/60)+' min':s+' s')+' → '+R[r+1]+' km';}
   $('sheet').innerHTML=`<div class="grip"></div>
   <h3><span>${c.ic}</span>${c.n}</h3><div class="badges">${badges(a)}</div>
-  <div class="ph">${a.photo?`<img src="${esc(a.photo)}" alt="Foto del reporte">`:c.ic}</div>
+  ${kindBanner(a)}
+  <div class="ph">${a.photo?`<img src="${esc(a.photo)}" alt="Foto del reporte">`:a.hasPrivate?'🔒':c.ic}</div>
   <p style="font-size:14px;color:#374151">${esc(a.desc||c.desc)}</p>
+  ${a.authorization?`<div class="lvlinfo">✅ Datos publicados con autorización de <b>${esc(a.authorization.parentesco)}</b>, validada por ${esc(a.authorization.by)}.</div>`:''}
+  ${a.verified?'':trustBar(a,true)}
+  ${a.expiresAt&&a.status==='activa'&&!a.verified?`<div class="lvlinfo">⌛ Si nadie lo confirma, este reporte caduca en <b>${Math.max(0,Math.ceil((a.expiresAt-Date.now())/60000))} min</b>.</div>`:''}
+  <div class="lvlinfo"><b>${L.ic} Nivel ${L.n}:</b> ${L.notif}. Radio ${R.join(' → ')} km, se amplía cada ${L.stepMin} min. Torre celular: ${L.cbc}.</div>
   <div class="kv">
     <div>Distancia<b>${fmtKm(dist(me,a))}</b></div><div>Publicada<b>${ago(a.t)}</b></div>
     <div>Radio actual<b>${radius(a)} km</b></div><div>Próxima ampliación<b>${next}</b></div>
@@ -543,15 +617,15 @@ function renderSheet(){
   ${a.status==='activa'?`
   ${!a.mine?`<button class="btn" onclick="confirmA('${a.id}')">📍 Lo vi / tengo información</button>`:''}
   <button class="btn sec" onclick="shareA('${a.id}')">📤 Compartir alerta</button>
-  ${a.cat!=='panico'||a.mine?`<button class="btn ok" onclick="resolveA('${a.id}')">✅ Marcar como resuelta</button>`:''}
+  ${a.mine?`<button class="btn ok" onclick="resolveA('${a.id}')">✅ Marcar como resuelta</button>`:''}
   ${!a.verified&&!a.mine?`<button class="btn out" onclick="flagA('${a.id}')">🚩 Reportar como falsa</button>`:''}`:
   `<div class="loc" style="background:#ecfdf5;color:#166534">Esta alerta fue cerrada. Se avisó a los usuarios que la recibieron.</div>`}
   <button class="btn out" style="margin-top:8px" onclick="closeSheet()">Cerrar</button>`;
 }
-function confirmA(id){send(`alerts/${id}/confirm`);toast('Gracias. Tu aviso se envió a quien publicó la alerta y al centro de monitoreo.');}
+async function confirmA(id){const r=await send(`alerts/${id}/confirm`,{owner:DEV});if(r)toast('📍 Gracias. Tu confirmación sube la confiabilidad del reporte y llegó al centro de monitoreo.');}
 function shareA(id){const a=alerts.find(x=>x.id===id),c=CATS[a.cat],txt=`ALERTA CERCA: ${c.n}. ${a.desc||c.desc}`;if(navigator.share)navigator.share({title:'ALERTA CERCA',text:txt}).catch(()=>{});else{navigator.clipboard&&navigator.clipboard.writeText(txt);toast('Texto de la alerta copiado');}}
-function resolveA(id){if(panic&&panic.alertId===id){$('safeBtn').click();return;}send(`alerts/${id}/resolve`);}
-function flagA(id){const a=alerts.find(x=>x.id===id);send(`alerts/${id}/flag`);if(a&&a.flags+1<3)toast(`Reporte recibido (${a.flags+1}/3). Con 3 reportes la alerta se retira para revisión.`);}
+function resolveA(id){if(panic&&panic.alertId===id){$('safeBtn').click();return;}send(`alerts/${id}/resolve`,{owner:DEV});}
+async function flagA(id){const a=alerts.find(x=>x.id===id);const r=await send(`alerts/${id}/flag`,{owner:DEV});if(r&&a&&r.status==='activa')toast(`🚩 Reporte recibido (${r.flags}/3). Con 3 reportes la alerta se retira para revisión.`);}
 
 /* ---------- simulador ---------- */
 $('simBtn').onclick=()=>{
@@ -573,23 +647,31 @@ function simulate(cat){
 }
 
 /* ---------- reportar ---------- */
-$('repCat').innerHTML=Object.keys(CATS).filter(k=>k!=='panico').map(k=>`<option value="${k}">${CATS[k].ic} ${CATS[k].n}</option>`).join('');
+$('repCat').innerHTML=[...new Set(Object.values(CATS).map(c=>c.g))].map(g=>`<optgroup label="${g}">${Object.keys(CATS).filter(k=>k!=='panico'&&CATS[k].g===g).map(k=>`<option value="${k}">${CATS[k].ic} ${CATS[k].n}</option>`).join('')}</optgroup>`).join('');
+function repInfo(){
+  const k=$('repCat').value,L=LEVELS[CATS[k].lvl];
+  $('repLvl').innerHTML=`<b>${L.ic} Nivel ${L.n}</b> · radio inicial ${L.radios[0]} km · ${L.notif.toLowerCase()}.<br>Tu reporte se publica como <b>reporte ciudadano sin confirmar</b>${L.cbc.startsWith('No')?'.':' y solo pasa a la torre celular cuando un operador lo verifica.'}`;
+  $('repPriv').style.display=CATS[k].personal?'block':'none';
+}
+$('repCat').onchange=repInfo;repInfo();
 let repPhoto=null,myReports=[];
 function shrink(file){return new Promise(res=>{const img=new Image();img.onload=()=>{const k=Math.min(1,800/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*k);cv.height=Math.round(img.height*k);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(img.src);res(cv.toDataURL('image/jpeg',.7));};img.onerror=()=>res(null);img.src=URL.createObjectURL(file);});}
 $('repPhoto').onchange=async e=>{const f=e.target.files[0];if(!f)return;repPhoto=await shrink(f);if(repPhoto)$('phPrev').innerHTML=`<img src="${repPhoto}" alt="">`;};
-$('repForm').onsubmit=e=>{
+$('repForm').onsubmit=async e=>{
   e.preventDefault();
-  myReports=myReports.filter(t=>Date.now()-t<600000);
-  if(myReports.length>=3){toast('Límite alcanzado: máximo 3 reportes cada 10 minutos (anti-spam).');return;}
   const cat=$('repCat').value;
-  const dup=alerts.find(a=>a.status==='activa'&&a.cat===cat&&!a.mine&&dist(me,a)<0.5);
-  if(dup){send(`alerts/${dup.id}/confirm`);toast('Ya existe una alerta similar a menos de 500 m. Sumamos tu reporte como confirmación.');go('mapa');openSheet(dup.id);return;}
-  myReports.push(Date.now());
+  if(Sync.mode!=='server'){ /* sin servidor: controles básicos en el propio celular */
+    myReports=myReports.filter(t=>Date.now()-t<600000);
+    if(myReports.length>=3){toast('Límite alcanzado: máximo 3 reportes cada 10 minutos (anti-spam).');return;}
+    myReports.push(Date.now());
+  }
   const p=offset(me,0.05,Math.random()*360);
-  flyMine=true;
-  send('alerts',{cat,lat:p.lat,lng:p.lng,owner:DEV,origin:'app',speed:SPEED,src:'Reporte ciudadano',desc:$('repDesc').value.trim(),photo:repPhoto});
-  e.target.reset();repPhoto=null;$('phPrev').textContent='📷';
-  toast('Enviando reporte…');
+  flyMine=true;toast('Enviando reporte…');
+  /* integ: en producción aquí va el token de Play Integrity (Android) o App Attest (iOS) */
+  const r=await send('alerts',{cat,lat:p.lat,lng:p.lng,owner:DEV,origin:'app',speed:SPEED,src:'Reporte ciudadano',desc:$('repDesc').value.trim(),photo:repPhoto,integ:'web-demo'});
+  if(!r){flyMine=false;return;}
+  if(r.merged){flyMine=false;toast(`♻️ Ya había un reporte igual cerca (${r.id}). Sumamos el tuyo como confirmación en lugar de duplicarlo.`,null,5000);go('mapa');openSheet(r.id);}
+  e.target.reset();repInfo();repPhoto=null;$('phPrev').textContent='📷';
 };
 
 /* ---------- botón de pánico ---------- */
@@ -618,7 +700,7 @@ function panicTick(){
   $('pTimer').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
   if(s>0&&s%3===0){
     moveMe(offset(me,0.02+Math.random()*0.03,Math.random()*360));
-    if(panic.alertId){panic.upd++;send(`alerts/${panic.alertId}/move`,{lat:me.lat,lng:me.lng});}
+    if(panic.alertId){panic.upd++;send(`alerts/${panic.alertId}/move`,{lat:me.lat,lng:me.lng,owner:DEV});}
     if(panic.trail)panic.trail.addLatLng([me.lat,me.lng]);
   }
   if(panic.ack<CONTACTS.length&&s>=(panic.ack+1)*2){panic.ack++;renderContacts(true);}
@@ -630,7 +712,7 @@ $('safeBtn').onclick=()=>{
   const pin=prompt('Para desactivar, escribe tu PIN de seguridad (demo: 1234)');
   if(pin===null)return;
   if(pin!=='1234'){toast('PIN incorrecto. El pánico sigue activo y se notificó a tus contactos.');return;}
-  clearInterval(panic.iv);if(panic.alertId)send(`alerts/${panic.alertId}/resolve`);closeSheet();
+  clearInterval(panic.iv);if(panic.alertId)send(`alerts/${panic.alertId}/resolve`,{owner:DEV});closeSheet();
   const tr=panic.trail;if(tr&&map)setTimeout(()=>map.removeLayer(tr),4000);
   const d=document.getElementById('meDot');if(d)d.classList.remove('panic');
   panic=null;$('panicActive').style.display='none';$('panicIdle').style.display='';renderContacts(false);
