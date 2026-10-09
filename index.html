@@ -18,7 +18,11 @@ header{background:#14161a;color:#fff;padding:12px 16px;padding-top:max(12px,env(
 .logo span{color:var(--org)}
 .pill{font-size:11px;color:#a7f3c0;display:flex;align-items:center;gap:5px;margin-top:2px}
 .pill i{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:blink 1.6s infinite}
-.hbtn{margin-left:auto;background:#2a2d34;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:18px}
+.conn{margin-left:auto;font-size:10px;font-weight:800;letter-spacing:.3px;padding:5px 7px;border-radius:6px;background:#2a2d34;color:#9ca3af;white-space:nowrap}
+.conn.on{background:#14532d;color:#86efac}
+.conn.bad{background:#7f1d1d;color:#fecaca}
+.conn{cursor:pointer}
+.hbtn{background:#2a2d34;color:#fff;border:0;border-radius:10px;width:38px;height:38px;font-size:18px}
 main{flex:1;position:relative;overflow:hidden}
 .view{position:absolute;inset:0;overflow-y:auto;display:none;padding:16px}
 .view.on{display:block}
@@ -122,11 +126,11 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       <div class="logo">ALERTA <span>CERCA</span></div>
       <div class="pill"><i></i><span id="locTxt">Ubicación activa · Lázaro Cárdenas</span></div>
     </div>
+    <span class="conn" id="conn" title="Toca para configurar el servidor">CONECTANDO…</span>
     <button class="hbtn" id="muteBtn" aria-label="Sonido">🔊</button>
   </header>
 
   <main>
-    <!-- MAPA -->
     <section class="view on" id="view-mapa">
       <div id="map"></div>
       <div class="top-chip" id="nearChip">0 alertas activas cerca</div>
@@ -137,14 +141,12 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       </div>
     </section>
 
-    <!-- ALERTAS -->
     <section class="view" id="view-alertas">
       <h2 class="t">Alertas</h2>
       <p class="s">Ordenadas por cercanía. Toca una para ver detalles.</p>
       <div id="list"></div>
     </section>
 
-    <!-- REPORTAR -->
     <section class="view" id="view-reportar">
       <h2 class="t">Reportar un acontecimiento</h2>
       <p class="s">Tu reporte se publicará como <b>no confirmado</b> hasta que la comunidad o una autoridad lo valide.</p>
@@ -161,11 +163,10 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       </form>
     </section>
 
-    <!-- PÁNICO -->
     <section class="view" id="view-panico">
       <div class="panic-wrap" id="panicIdle">
         <h2 class="t">Botón de pánico</h2>
-        <p class="s">Mantén presionado 2 segundos. Se compartirá tu ubicación en vivo con tus contactos y se alertará a usuarios en 500 m.</p>
+        <p class="s">Mantén presionado 2 segundos. Se compartirá tu ubicación en vivo con tus contactos, con el centro de monitoreo y se alertará a usuarios en 500 m.</p>
         <button class="pbtn" id="pbtn"><svg viewBox="0 0 220 220"><circle cx="110" cy="110" r="105"/></svg>SOS<small>Mantén presionado</small></button>
         <div class="contacts" id="ctIdle"></div>
       </div>
@@ -191,7 +192,6 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
     <button data-v="panico"><span class="e">🆘</span>Pánico</button>
   </nav>
 
-  <!-- Alerta tipo sísmica -->
   <div class="ov hidden" id="ov">
     <div class="ov-bg" id="ovBg"></div>
     <div class="ov-box">
@@ -206,7 +206,6 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
     </div>
   </div>
 
-  <!-- Hoja inferior -->
   <div class="shade hidden" id="shade"><div class="sheet" id="sheet"></div></div>
   <div class="toast" id="toast"></div>
 </div>
@@ -217,26 +216,31 @@ const CATS={
   menor:{n:'Desaparición de menor',ic:'🧒',lvl:'Crítico',col:'#d62828',radios:[1,3,5,10],desc:'Niño de 7 años, playera roja y short azul. Visto por última vez frente a la escuela primaria.'},
   adulto:{n:'Adulto mayor extraviado',ic:'👴',lvl:'Alto',col:'#e85d04',radios:[1,3,5],desc:'Señor de 78 años, camisa blanca, usa bastón. Padece Alzheimer y puede estar desorientado.'},
   vehiculo:{n:'Robo de vehículo',ic:'🚗',lvl:'Alto',col:'#e85d04',radios:[2,5,10],desc:'Camioneta gris, placas MXX-123-A. Se dirige hacia la carretera federal.'},
+  casa:{n:'Robo a casa o comercio',ic:'🏠',lvl:'Alto',col:'#e85d04',radios:[1,2],desc:'Robo a comercio. Dos personas huyeron a pie hacia la avenida principal.'},
   asalto:{n:'Asalto / situación de riesgo',ic:'⚠️',lvl:'Alto',col:'#e85d04',radios:[1,2],desc:'Asalto a transeúnte por dos personas en motocicleta negra.'},
   incendio:{n:'Incendio',ic:'🔥',lvl:'Crítico',col:'#d62828',radios:[1,2,3],desc:'Incendio en terreno baldío con humo denso. Evite la zona y cierre ventanas.'},
   inundacion:{n:'Inundación',ic:'🌊',lvl:'Medio',col:'#1d6fb8',radios:[2,5],desc:'Calle inundada, no transitable para autos pequeños.'},
   accidente:{n:'Accidente vial',ic:'🚑',lvl:'Medio',col:'#1d6fb8',radios:[1,2],desc:'Choque entre dos vehículos, un carril bloqueado.'},
   panico:{n:'Botón de pánico activado',ic:'🆘',lvl:'Crítico',col:'#9d0208',radios:[0.5,1,2],desc:'Un usuario cercano activó su botón de pánico y podría necesitar ayuda.'}
 };
-const EXP_MS=10000;
+const SPEED=90; /* demo: cada paso de radio dura 10 s en lugar de 15 min */
+const STEP_MS=900000;
 const CONTACTS=[{n:'Mamá',i:'M'},{n:'Papá',i:'P'},{n:'Hermana',i:'H'}];
-let me={lat:17.9583,lng:-102.1944}, alerts=[], seq=0, map=null, meMarker=null, muted=false, actx=null, ovQueue=[], ovShowing=null, openId=null;
+let me={lat:17.9583,lng:-102.1944}, alerts=[], map=null, meMarker=null, muted=false, actx=null, ovQueue=[], ovShowing=null, openId=null, flyMine=false;
 const $=id=>document.getElementById(id);
+const DEV=(()=>{const mk=()=>'D'+Math.random().toString(36).slice(2,10);try{let d=localStorage.getItem('ac-dev');if(!d){d=mk();localStorage.setItem('ac-dev',d);}return d;}catch(e){return mk();}})();
 
 /* ---------- util ---------- */
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function dist(a,b){const R=6371,t=Math.PI/180,dl=(b.lat-a.lat)*t,dg=(b.lng-a.lng)*t;const h=Math.sin(dl/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 function offset(p,km,deg){const b=deg*Math.PI/180;return{lat:p.lat+km/111*Math.cos(b),lng:p.lng+km/(111*Math.cos(p.lat*Math.PI/180))*Math.sin(b)};}
 function fmtKm(k){return k<1?Math.round(k*1000)+' m':k.toFixed(1)+' km';}
-function ago(t){const s=Math.floor((Date.now()-t)/1000);if(s<60)return'hace '+s+' s';const m=Math.floor(s/60);return'hace '+m+' min';}
-function radius(a){return CATS[a.cat].radios[a.ri];}
+function ago(t){const s=Math.max(0,Math.floor((Date.now()-t)/1000));if(s<60)return'hace '+s+' s';const m=Math.floor(s/60);if(m<60)return'hace '+m+' min';return'hace '+Math.floor(m/60)+' h';}
+function ri(a){const R=CATS[a.cat].radios,end=a.closedAt||Date.now();return Math.min(R.length-1,Math.max(0,Math.floor((end-a.t)*(a.speed||1)/STEP_MS)));}
+function radius(a){return CATS[a.cat].radios[ri(a)];}
 function users(r){return Math.round(Math.PI*r*r*38);}
 function lvlClass(l){return l==='Crítico'?'c':l==='Alto'?'a':'m';}
-function toast(msg){const t=$('toast');t.innerHTML=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3200);}
+function toast(msg){const t=$('toast');t.innerHTML=msg;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),3400);}
 function badges(a){
   const c=CATS[a.cat];let h=`<span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>`;
   if(a.status==='resuelta')h+='<span class="bdg r">Resuelta</span>';
@@ -244,6 +248,103 @@ function badges(a){
   else if(a.conf>=3)h+='<span class="bdg v">Confirmada por comunidad</span>';
   else h+='<span class="bdg u">No confirmada</span>';
   return h;
+}
+
+/* ================= SINCRONIZACIÓN =================
+   Modo servidor: si la página se abrió desde server.js, todo pasa por /api y llega a
+   todos los dispositivos por Server-Sent Events.
+   Modo local: si se abrió como archivo, se sincroniza solo entre pestañas del mismo navegador. */
+const KEYS=['id','cat','lat','lng','t','speed','status','verified','src','conf','flags','desc','photo','origin','owner','verifiedAt','verifiedBy','closedAt','trail'];
+const Sync={mode:'local',bc:null};
+/* Dirección del servidor de monitoreo.
+   - Si la app se abrió desde el servidor (http://IP:3000/app) se usa esa misma dirección.
+   - Si index.html se abrió como archivo, se usa la que guardes tocando el indicador de conexión. */
+let API=(()=>{if(location.protocol.startsWith('http'))return location.origin;try{return localStorage.getItem('ac-server')||'';}catch(e){return'';}})();
+function configServer(){
+  const v=prompt('Dirección del servidor de monitoreo (ejemplo: http://192.168.1.50:3000)',API||'http://');
+  if(v===null)return;
+  const clean=v.trim().replace(/\/+$/,'').replace(/\/app$/,'');
+  try{localStorage.setItem('ac-server',clean);}catch(e){}
+  if(location.protocol.startsWith('http')&&clean&&clean!==location.origin){location.href=clean+'/app';return;}
+  location.reload();
+}
+function plain(a){const o={};KEYS.forEach(k=>o[k]=a[k]===undefined?null:JSON.parse(JSON.stringify(a[k])));return o;}
+function makeAlert(b,id){ /* mismas reglas que server.js */
+  if(!CATS[b.cat])throw new Error('categoría inválida');
+  const now=Date.now(),ver=!!b.verified;
+  return{id,cat:b.cat,lat:+b.lat,lng:+b.lng,t:now,speed:Math.min(500,Math.max(1,+b.speed||1)),status:'activa',verified:ver,src:String(b.src||'Reporte ciudadano').slice(0,60),conf:0,flags:0,desc:String(b.desc||'').slice(0,500),photo:b.photo||null,origin:String(b.origin||'app'),owner:String(b.owner||''),verifiedAt:ver?now:null,verifiedBy:ver?b.src:null,closedAt:null,trail:b.cat==='panico'?[[+b.lat,+b.lng]]:null};
+}
+function applyAct(a,act,b){
+  b=b||{};const now=Date.now();if(a.status!=='activa')return a;
+  if(act==='confirm')a.conf++;
+  else if(act==='flag'){a.flags++;if(a.flags>=3&&!a.verified){a.status='retirada';a.closedAt=now;}}
+  else if(act==='verify'){a.verified=true;a.verifiedAt=now;a.verifiedBy=b.by||'Operador';}
+  else if(act==='resolve'){a.status='resuelta';a.closedAt=now;}
+  else if(act==='retire'){a.status='retirada';a.closedAt=now;}
+  else if(act==='move'){a.lat=+b.lat;a.lng=+b.lng;if(a.trail){a.trail.push([a.lat,a.lng]);if(a.trail.length>300)a.trail.shift();}}
+  return a;
+}
+function setConn(s){const c=$('conn');c.className='conn'+(s==='on'?' on':s==='bad'?' bad':'');c.textContent=s==='on'?'● EN LÍNEA':s==='bad'?'SIN CONEXIÓN':'MODO LOCAL';}
+async function initSync(){
+  $('conn').onclick=configServer;
+  if(API){
+    try{
+      const r=await fetch(API+'/api/ping',{cache:'no-store'});
+      if(r.ok){
+        Sync.mode='server';
+        const es=new EventSource(API+'/api/stream');
+        es.onopen=()=>setConn('on');
+        es.onerror=()=>setConn('bad');
+        es.onmessage=e=>{try{onEvent(JSON.parse(e.data));}catch(err){console.error(err);}};
+        return;
+      }
+    }catch(e){toast('⚠️ No se encontró el servidor en '+esc(API)+'. Toca el indicador de arriba para corregir la dirección.');setConn('bad');}
+  }
+  try{Sync.bc=new BroadcastChannel('alerta-cerca');Sync.bc.onmessage=e=>onEvent(e.data);}catch(e){}
+  setConn(API?'bad':'local');
+}
+async function send(path,body){
+  if(Sync.mode==='server'){
+    try{const r=await fetch(API+'/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});if(!r.ok)throw new Error((await r.json()).error);}
+    catch(e){toast('⚠️ No se pudo enviar al servidor: '+esc(e.message||'sin conexión'));}
+    return;
+  }
+  let ev;
+  if(path==='alerts')ev={type:'upsert',action:'create',alert:makeAlert(body,'A-L'+Math.random().toString(36).slice(2,6).toUpperCase())};
+  else{const [,id,act]=path.split('/');const cur=alerts.find(x=>x.id===id);if(!cur)return;ev={type:'upsert',action:act,alert:applyAct(plain(cur),act,body)};}
+  onEvent(ev);try{Sync.bc&&Sync.bc.postMessage(ev);}catch(e){}
+}
+function onEvent(ev){
+  if(ev.type==='snapshot'){ev.alerts.forEach(d=>upsert(d,'snapshot',true));refresh();return;}
+  if(ev.type==='reset'){alerts.forEach(removeLayers);alerts=[];closeSheet();refresh();toast('↺ Las alertas de la demo se reiniciaron');return;}
+  if(ev.type==='upsert')upsert(ev.alert,ev.action,false);
+}
+function upsert(d,action,silent){
+  let a=alerts.find(x=>x.id===d.id);const isNew=!a;
+  if(isNew){a={notified:false,warned:false};alerts.unshift(a);}
+  Object.assign(a,d);a.mine=a.owner===DEV;a._ri=ri(a);
+  const c=CATS[a.cat];
+  if(a.status==='retirada'){
+    removeLayers(a);alerts=alerts.filter(x=>x!==a);
+    if(!silent&&(a.notified||a.mine||openId===a.id))toast('🚩 Alerta retirada por información falsa. Pasa a revisión.');
+    if(openId===a.id)closeSheet();refresh();return;
+  }
+  draw(a);
+  if(isNew){
+    if(silent){a.warned=true;if(a.status==='activa'&&dist(me,a)<=radius(a))a.notified=true;}
+    else if(a.mine){
+      if(a.cat==='panico'){if(panic&&!panic.alertId)panic.alertId=a.id;}
+      else if(flyMine){flyMine=false;go('mapa');if(map)map.flyTo([a.lat,a.lng],14);toast(`📨 Reporte enviado como NO CONFIRMADO a ≈ ${users(radius(a))} usuarios en ${radius(a)} km y al centro de monitoreo.`);}
+    }
+    else checkNotify(a);
+  }else if(!silent){
+    if(action==='verify'&&(a.notified||a.mine))toast(`✔ ${c.n}: verificada por ${esc(a.verifiedBy||'autoridad')}`);
+    if(action==='resolve'&&(a.notified||a.mine)&&a.cat!=='panico')toast(`✅ Resuelta: ${c.n}. Gracias por tu colaboración.`);
+    if(action==='resolve'&&a.cat==='panico'&&!a.mine&&a.notified)toast('✅ La persona que activó el pánico ya está a salvo.');
+    if(action==='confirm'&&a.mine&&a.conf===3&&!a.verified)toast('✔ Tu reporte fue confirmado por la comunidad');
+    if(action==='cbc'&&a.mine&&a.cbc&&a.cbc.status==='enviado')toast(`📡 Tu alerta se está transmitiendo por la torre celular a todos los teléfonos de la zona (mensaje #${a.cbc.messageId}).`);
+  }
+  refresh();if(openId===a.id)renderSheet();
 }
 
 /* ---------- sonido tipo alerta sísmica ---------- */
@@ -262,7 +363,7 @@ $('muteBtn').onclick=()=>{muted=!muted;$('muteBtn').textContent=muted?'🔇':'�
 /* ---------- mapa ---------- */
 function initMap(){
   if(typeof L==='undefined'){$('map').innerHTML='<div class="nomap">El mapa necesita internet.<br>Las alertas siguen funcionando.</div>';return;}
-  map=L.map('map',{zoomControl:false,attributionControl:true}).setView([me.lat,me.lng],14);
+  map=L.map('map',{zoomControl:false}).setView([me.lat,me.lng],14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
   meMarker=L.marker([me.lat,me.lng],{zIndexOffset:1000,icon:L.divIcon({className:'',html:'<div class="me-dot" id="meDot"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
 }
@@ -271,49 +372,41 @@ initMap();
 if(navigator.geolocation){
   navigator.geolocation.getCurrentPosition(p=>{moveMe({lat:p.coords.latitude,lng:p.coords.longitude});if(map)map.setView([me.lat,me.lng],14);$('locTxt').textContent='Ubicación activa · GPS';},()=>{},{timeout:6000});
 }
-
-/* ---------- alertas ---------- */
-function createAlert(cat,p,o={}){
-  const c=CATS[cat];
-  const a={id:++seq,cat,lat:p.lat,lng:p.lng,created:Date.now(),lastExp:Date.now(),ri:0,status:'activa',verified:!!o.verified,source:o.source||'Reporte ciudadano',conf:0,flags:0,desc:o.desc||c.desc,photo:o.photo||null,notified:false,warned:false,mine:!!o.mine};
-  alerts.unshift(a);
-  if(map){
-    a.circle=L.circle([a.lat,a.lng],{radius:radius(a)*1000,color:c.col,fillColor:c.col,fillOpacity:.1,weight:2,dashArray:a.verified?null:'6 6'}).addTo(map);
-    a.marker=L.marker([a.lat,a.lng],{icon:pinIcon(a)}).addTo(map).on('click',()=>openSheet(a.id));
-  }
-  checkNotify(a);refresh();return a;
+function pinIcon(a){const c=CATS[a.cat];return L.divIcon({className:'',html:`<div class="pin ${a.status!=='activa'?'closed':''}" style="background:${c.col}">${c.ic}</div>`,iconSize:[34,34],iconAnchor:[17,17]});}
+function draw(a){
+  if(!map)return;const c=CATS[a.cat],closed=a.status!=='activa',col=closed?'#9ca3af':c.col;
+  if(!a.circle){a.circle=L.circle([a.lat,a.lng],{radius:radius(a)*1000,weight:2}).addTo(map);a.marker=L.marker([a.lat,a.lng],{icon:pinIcon(a)}).addTo(map).on('click',()=>openSheet(a.id));}
+  a.circle.setLatLng([a.lat,a.lng]);a.circle.setRadius(radius(a)*1000);
+  a.circle.setStyle({color:col,fillColor:col,fillOpacity:closed?.05:.1,dashArray:a.verified?null:'6 6'});
+  a.marker.setLatLng([a.lat,a.lng]);a.marker.setIcon(pinIcon(a));
 }
-function pinIcon(a){const c=CATS[a.cat];return L.divIcon({className:'',html:`<div class="pin ${a.status==='resuelta'?'closed':''}" style="background:${c.col}">${c.ic}</div>`,iconSize:[34,34],iconAnchor:[17,17]});}
+function removeLayers(a){if(map&&a.circle){map.removeLayer(a.circle);map.removeLayer(a.marker);}a.circle=a.marker=null;}
+
+/* ---------- notificación ---------- */
 function checkNotify(a){
   if(a.mine||a.notified||a.status!=='activa')return;
   const d=dist(me,a);
   if(d<=radius(a)){a.notified=true;showOverlay(a);}
   else if(!a.warned){a.warned=true;toast(`Nueva alerta a ${fmtKm(d)}, fuera del radio actual (${radius(a)} km). Si no se resuelve, el radio crecerá.`);}
 }
-function expandTick(){
+setInterval(()=>{
   alerts.forEach(a=>{
     if(a.status!=='activa')return;
-    const R=CATS[a.cat].radios;
-    if(a.ri<R.length-1&&Date.now()-a.lastExp>=EXP_MS){
-      a.ri++;a.lastExp=Date.now();
-      if(a.circle)a.circle.setRadius(radius(a)*1000);
-      if(!a.notified)toast(`📡 Radio ampliado a ${radius(a)} km: ${CATS[a.cat].n}`);
-      checkNotify(a);
-    }
+    const r=ri(a);
+    if(r!==a._ri){a._ri=r;if(a.circle)a.circle.setRadius(radius(a)*1000);
+      if(!a.notified&&!a.mine)toast(`📡 Radio ampliado a ${radius(a)} km: ${CATS[a.cat].n}`);
+      checkNotify(a);}
   });
-  if(openId)renderSheet();
-  refresh();
-}
-setInterval(expandTick,1000);
+  if(openId)renderSheet();refresh();
+},1000);
 
-/* ---------- overlay tipo sísmica ---------- */
 function showOverlay(a){
   if(ovShowing){ovQueue.push(a);return;}
   ovShowing=a;const c=CATS[a.cat];
   $('ovBg').style.background=c.col;$('ovTop').style.background=c.col;
   $('ovIc').textContent=c.ic;$('ovT').textContent=c.n;
-  $('ovMeta').textContent=`A ${fmtKm(dist(me,a))} de ti · ${ago(a.created)} · ${a.source}`;
-  $('ovD').textContent=a.desc;$('ovB').innerHTML=badges(a);
+  $('ovMeta').textContent=`A ${fmtKm(dist(me,a))} de ti · ${ago(a.t)} · ${a.src}`;
+  $('ovD').textContent=a.desc||c.desc;$('ovB').innerHTML=badges(a);
   $('ov').classList.remove('hidden');siren();
 }
 function closeOverlay(){$('ov').classList.add('hidden');ovShowing=null;if(ovQueue.length)setTimeout(()=>showOverlay(ovQueue.shift()),400);}
@@ -328,7 +421,7 @@ function refresh(){
   const list=$('list');
   if(!alerts.length){list.innerHTML='<div class="empty">Sin alertas por ahora.<br>Usa “Simular alerta” en el mapa.</div>';return;}
   const s=[...alerts].sort((x,y)=>(x.status!==y.status?(x.status==='activa'?-1:1):dist(me,x)-dist(me,y)));
-  list.innerHTML=s.map(a=>{const c=CATS[a.cat];return`<div class="card ${a.status==='resuelta'?'closed':''}" style="border-left-color:${c.col}" onclick="openSheet(${a.id})"><div class="ic">${c.ic}</div><div class="bd"><h4>${c.n}${a.mine?' (tuya)':''}</h4><div class="m">${fmtKm(dist(me,a))} · ${ago(a.created)} · radio ${radius(a)} km</div><div class="badges">${badges(a)}</div></div></div>`;}).join('');
+  list.innerHTML=s.map(a=>{const c=CATS[a.cat];return`<div class="card ${a.status!=='activa'?'closed':''}" style="border-left-color:${c.col}" onclick="openSheet('${a.id}')"><div class="ic">${c.ic}</div><div class="bd"><h4>${c.n}${a.mine?' (tuya)':''}</h4><div class="m">${fmtKm(dist(me,a))} · ${ago(a.t)} · radio ${radius(a)} km</div><div class="badges">${badges(a)}</div></div></div>`;}).join('');
 }
 
 /* ---------- hoja de detalle ---------- */
@@ -337,38 +430,36 @@ function closeSheet(){openId=null;$('shade').classList.add('hidden');}
 $('shade').onclick=e=>{if(e.target.id==='shade')closeSheet();};
 function renderSheet(){
   const a=alerts.find(x=>x.id===openId);if(!a){closeSheet();return;}
-  const c=CATS[a.cat],R=c.radios,next=a.ri<R.length-1&&a.status==='activa'?Math.max(0,Math.ceil((EXP_MS-(Date.now()-a.lastExp))/1000))+' s → '+R[a.ri+1]+' km':'Radio máximo';
+  const c=CATS[a.cat],R=c.radios,r=ri(a),step=STEP_MS/(a.speed||1);
+  let next='Radio máximo';
+  if(r<R.length-1&&a.status==='activa'){const s=Math.ceil((step-((Date.now()-a.t)%step))/1000);next=(s>90?Math.ceil(s/60)+' min':s+' s')+' → '+R[r+1]+' km';}
   $('sheet').innerHTML=`<div class="grip"></div>
   <h3><span>${c.ic}</span>${c.n}</h3><div class="badges">${badges(a)}</div>
-  <div class="ph">${a.photo?`<img src="${a.photo}" alt="Foto del reporte">`:c.ic}</div>
-  <p style="font-size:14px;color:#374151">${a.desc.replace(/</g,'&lt;')}</p>
+  <div class="ph">${a.photo?`<img src="${esc(a.photo)}" alt="Foto del reporte">`:c.ic}</div>
+  <p style="font-size:14px;color:#374151">${esc(a.desc||c.desc)}</p>
   <div class="kv">
-    <div>Distancia<b>${fmtKm(dist(me,a))}</b></div><div>Publicada<b>${ago(a.created)}</b></div>
+    <div>Distancia<b>${fmtKm(dist(me,a))}</b></div><div>Publicada<b>${ago(a.t)}</b></div>
     <div>Radio actual<b>${radius(a)} km</b></div><div>Próxima ampliación<b>${next}</b></div>
-    <div>Usuarios alcanzados<b>≈ ${users(radius(a))}</b></div><div>Fuente<b>${a.source}</b></div>
+    <div>Usuarios alcanzados<b>≈ ${users(radius(a))}</b></div><div>Fuente<b>${esc(a.src)}</b></div>
     <div>Confirmaciones<b>${a.conf}</b></div><div>Reportes de falsa<b>${a.flags}</b></div>
   </div>
   ${a.status==='activa'?`
-  <button class="btn" onclick="confirmA(${a.id})">📍 Lo vi / tengo información</button>
-  <button class="btn sec" onclick="shareA(${a.id})">📤 Compartir alerta</button>
-  <button class="btn ok" onclick="resolveA(${a.id})">✅ Marcar como resuelta</button>
-  ${!a.verified?`<button class="btn out" onclick="flagA(${a.id})">🚩 Reportar como falsa</button>`:''}`:
+  ${!a.mine?`<button class="btn" onclick="confirmA('${a.id}')">📍 Lo vi / tengo información</button>`:''}
+  <button class="btn sec" onclick="shareA('${a.id}')">📤 Compartir alerta</button>
+  ${a.cat!=='panico'||a.mine?`<button class="btn ok" onclick="resolveA('${a.id}')">✅ Marcar como resuelta</button>`:''}
+  ${!a.verified&&!a.mine?`<button class="btn out" onclick="flagA('${a.id}')">🚩 Reportar como falsa</button>`:''}`:
   `<div class="loc" style="background:#ecfdf5;color:#166534">Esta alerta fue cerrada. Se avisó a los usuarios que la recibieron.</div>`}
   <button class="btn out" style="margin-top:8px" onclick="closeSheet()">Cerrar</button>`;
 }
-function confirmA(id){const a=alerts.find(x=>x.id===id);a.conf++;toast(a.conf===3&&!a.verified?'✔ Alerta confirmada por la comunidad':'Gracias. Tu ubicación y aviso se enviaron a quien publicó la alerta.');renderSheet();refresh();}
-function shareA(id){const a=alerts.find(x=>x.id===id),c=CATS[a.cat],txt=`ALERTA CERCA: ${c.n}. ${a.desc}`;if(navigator.share)navigator.share({title:'ALERTA CERCA',text:txt}).catch(()=>{});else{navigator.clipboard&&navigator.clipboard.writeText(txt);toast('Texto de la alerta copiado');}}
-function resolveA(id){const a=alerts.find(x=>x.id===id);a.status='resuelta';
-  if(a.circle)a.circle.setStyle({color:'#9ca3af',fillColor:'#9ca3af',fillOpacity:.05});if(a.marker)a.marker.setIcon(pinIcon(a));
-  toast(`✅ Alerta cerrada. Se notificó a ≈ ${users(radius(a))} usuarios que la situación se resolvió.`);renderSheet();refresh();}
-function flagA(id){const a=alerts.find(x=>x.id===id);a.flags++;
-  if(a.flags>=3){a.status='resuelta';if(a.circle)map.removeLayer(a.circle);if(a.marker)map.removeLayer(a.marker);alerts=alerts.filter(x=>x.id!==id);closeSheet();toast('🚩 Alerta retirada por múltiples reportes de información falsa. Pasa a revisión.');refresh();}
-  else{toast(`Reporte recibido (${a.flags}/3). Con 3 reportes la alerta se retira para revisión.`);renderSheet();}}
+function confirmA(id){send(`alerts/${id}/confirm`);toast('Gracias. Tu aviso se envió a quien publicó la alerta y al centro de monitoreo.');}
+function shareA(id){const a=alerts.find(x=>x.id===id),c=CATS[a.cat],txt=`ALERTA CERCA: ${c.n}. ${a.desc||c.desc}`;if(navigator.share)navigator.share({title:'ALERTA CERCA',text:txt}).catch(()=>{});else{navigator.clipboard&&navigator.clipboard.writeText(txt);toast('Texto de la alerta copiado');}}
+function resolveA(id){if(panic&&panic.alertId===id){$('safeBtn').click();return;}send(`alerts/${id}/resolve`);}
+function flagA(id){const a=alerts.find(x=>x.id===id);send(`alerts/${id}/flag`);if(a&&a.flags+1<3)toast(`Reporte recibido (${a.flags+1}/3). Con 3 reportes la alerta se retira para revisión.`);}
 
 /* ---------- simulador ---------- */
 $('simBtn').onclick=()=>{
   openId=null;
-  $('sheet').innerHTML=`<div class="grip"></div><h3>Simular alerta</h3><p class="s" style="margin-top:4px">Se generará a una distancia aleatoria de ti (0.2 – 3.5 km).</p>
+  $('sheet').innerHTML=`<div class="grip"></div><h3>Simular alerta</h3><p class="s" style="margin-top:4px">Se generará a una distancia aleatoria de ti (0.2 – 3.5 km) y aparecerá también en el centro de monitoreo.</p>
   <div class="chips">${Object.keys(CATS).filter(k=>k!=='panico').map(k=>`<button onclick="simulate('${k}')"><span>${CATS[k].ic}</span>${CATS[k].n}</button>`).join('')}
   <button onclick="simulate('panico')"><span>🆘</span>Pánico de otro usuario</button>
   <button onclick="simulate()" style="grid-column:1/-1;text-align:center;background:#14161a;color:#fff;border-color:#14161a">🎲 Aleatoria</button></div>`;
@@ -379,26 +470,29 @@ function simulate(cat){
   const keys=Object.keys(CATS).filter(k=>k!=='panico');cat=cat||keys[Math.floor(Math.random()*keys.length)];
   const p=offset(me,cat==='panico'?0.3:0.2+Math.random()*3.3,Math.random()*360);
   const ver=cat!=='panico'&&Math.random()<.5;
-  createAlert(cat,p,{verified:ver,source:cat==='panico'?'Usuario de la app':ver?(Math.random()<.5?'Protección Civil':'Seguridad Pública Mpal.'):'Reporte ciudadano'});
+  send('alerts',{cat,lat:p.lat,lng:p.lng,verified:ver,speed:SPEED,owner:'sim',origin:'simulador',
+    src:cat==='panico'?'Usuario (botón de pánico)':ver?(Math.random()<.5?'Protección Civil':'Seguridad Pública Mpal.'):'Reporte ciudadano',desc:CATS[cat].desc});
   if(map)map.flyTo([(me.lat+p.lat)/2,(me.lng+p.lng)/2],13);
 }
 
 /* ---------- reportar ---------- */
 $('repCat').innerHTML=Object.keys(CATS).filter(k=>k!=='panico').map(k=>`<option value="${k}">${CATS[k].ic} ${CATS[k].n}</option>`).join('');
 let repPhoto=null,myReports=[];
-$('repPhoto').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{repPhoto=r.result;$('phPrev').innerHTML=`<img src="${repPhoto}" alt="">`;};r.readAsDataURL(f);};
+function shrink(file){return new Promise(res=>{const img=new Image();img.onload=()=>{const k=Math.min(1,800/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=Math.round(img.width*k);cv.height=Math.round(img.height*k);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(img.src);res(cv.toDataURL('image/jpeg',.7));};img.onerror=()=>res(null);img.src=URL.createObjectURL(file);});}
+$('repPhoto').onchange=async e=>{const f=e.target.files[0];if(!f)return;repPhoto=await shrink(f);if(repPhoto)$('phPrev').innerHTML=`<img src="${repPhoto}" alt="">`;};
 $('repForm').onsubmit=e=>{
   e.preventDefault();
   myReports=myReports.filter(t=>Date.now()-t<600000);
   if(myReports.length>=3){toast('Límite alcanzado: máximo 3 reportes cada 10 minutos (anti-spam).');return;}
   const cat=$('repCat').value;
-  const dup=alerts.find(a=>a.status==='activa'&&a.cat===cat&&dist(me,a)<0.5);
-  if(dup){dup.conf++;toast('Ya existe una alerta similar a menos de 500 m. Sumamos tu reporte como confirmación.');go('mapa');openSheet(dup.id);return;}
+  const dup=alerts.find(a=>a.status==='activa'&&a.cat===cat&&!a.mine&&dist(me,a)<0.5);
+  if(dup){send(`alerts/${dup.id}/confirm`);toast('Ya existe una alerta similar a menos de 500 m. Sumamos tu reporte como confirmación.');go('mapa');openSheet(dup.id);return;}
   myReports.push(Date.now());
-  const a=createAlert(cat,offset(me,0.05,Math.random()*360),{mine:true,source:'Tú (reporte ciudadano)',desc:$('repDesc').value.trim(),photo:repPhoto});
+  const p=offset(me,0.05,Math.random()*360);
+  flyMine=true;
+  send('alerts',{cat,lat:p.lat,lng:p.lng,owner:DEV,origin:'app',speed:SPEED,src:'Reporte ciudadano',desc:$('repDesc').value.trim(),photo:repPhoto});
   e.target.reset();repPhoto=null;$('phPrev').textContent='📷';
-  go('mapa');if(map)map.flyTo([a.lat,a.lng],14);
-  toast(`📨 Reporte enviado como NO CONFIRMADO a ≈ ${users(radius(a))} usuarios en ${radius(a)} km.`);
+  toast('Enviando reporte…');
 };
 
 /* ---------- botón de pánico ---------- */
@@ -414,37 +508,36 @@ pb.addEventListener('pointerdown',e=>{e.preventDefault();pb.classList.add('hold'
 pb.addEventListener('contextmenu',e=>e.preventDefault());
 function startPanic(){
   pb.classList.remove('hold');if(navigator.vibrate)navigator.vibrate([200,100,200]);
-  const a=createAlert('panico',{...me},{mine:true,source:'Tú (botón de pánico)'});
-  panic={start:Date.now(),upd:0,ack:0,alert:a,trail:map?L.polyline([[me.lat,me.lng]],{color:'#d62828',weight:4}).addTo(map):null};
+  panic={start:Date.now(),upd:0,ack:0,alertId:null,trail:map?L.polyline([[me.lat,me.lng]],{color:'#d62828',weight:4}).addTo(map):null};
+  send('alerts',{cat:'panico',lat:me.lat,lng:me.lng,owner:DEV,origin:'app',speed:SPEED,src:'Usuario (botón de pánico)'});
   const d=document.getElementById('meDot');if(d)d.classList.add('panic');
   $('panicIdle').style.display='none';$('panicActive').style.display='';
   renderContacts(true);
   panic.iv=setInterval(panicTick,1000);
-  toast('🆘 Pánico activado. Tus contactos y usuarios en 500 m fueron alertados.');
+  toast('🆘 Pánico activado. Tus contactos, el centro de monitoreo y usuarios en 500 m fueron alertados.');
 }
 function panicTick(){
   const s=Math.floor((Date.now()-panic.start)/1000);
   $('pTimer').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-  if(s%3===0){
+  if(s>0&&s%3===0){
     moveMe(offset(me,0.02+Math.random()*0.03,Math.random()*360));
-    panic.upd++;panic.alert.lat=me.lat;panic.alert.lng=me.lng;
-    if(panic.alert.marker)panic.alert.marker.setLatLng([me.lat,me.lng]);
-    if(panic.alert.circle)panic.alert.circle.setLatLng([me.lat,me.lng]);
+    if(panic.alertId){panic.upd++;send(`alerts/${panic.alertId}/move`,{lat:me.lat,lng:me.lng});}
     if(panic.trail)panic.trail.addLatLng([me.lat,me.lng]);
   }
   if(panic.ack<CONTACTS.length&&s>=(panic.ack+1)*2){panic.ack++;renderContacts(true);}
+  const pa=alerts.find(x=>x.id===panic.alertId);
   $('pCoords').textContent=`${me.lat.toFixed(5)}, ${me.lng.toFixed(5)}`;
-  $('pUpd').textContent=`${panic.upd} actualizaciones enviadas · radio ${radius(panic.alert)} km`;
+  $('pUpd').textContent=`${panic.upd} actualizaciones enviadas · radio ${pa?radius(pa):0.5} km`;
 }
 $('safeBtn').onclick=()=>{
   const pin=prompt('Para desactivar, escribe tu PIN de seguridad (demo: 1234)');
   if(pin===null)return;
   if(pin!=='1234'){toast('PIN incorrecto. El pánico sigue activo y se notificó a tus contactos.');return;}
-  clearInterval(panic.iv);resolveA(panic.alert.id);closeSheet();
-  if(panic.trail&&map)setTimeout(()=>map.removeLayer(panic.trail),4000);
+  clearInterval(panic.iv);if(panic.alertId)send(`alerts/${panic.alertId}/resolve`);closeSheet();
+  const tr=panic.trail;if(tr&&map)setTimeout(()=>map.removeLayer(tr),4000);
   const d=document.getElementById('meDot');if(d)d.classList.remove('panic');
   panic=null;$('panicActive').style.display='none';$('panicIdle').style.display='';renderContacts(false);
-  toast('✅ Avisamos a tus contactos que estás a salvo.');
+  toast('✅ Avisamos a tus contactos y al centro de monitoreo que estás a salvo.');
 };
 
 /* ---------- navegación ---------- */
@@ -456,6 +549,7 @@ function go(v){
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 refresh();
+initSync();
 </script>
 </body>
 </html>

@@ -24,6 +24,18 @@ header{background:#14161a;color:#fff;position:sticky;top:0;z-index:1500}
 .live{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fca5a5}
 .live i{width:8px;height:8px;border-radius:50%;background:#ef4444;animation:blink 1.2s infinite}
 .live.off{color:#9ca3af}.live.off i{background:#6b7280;animation:none}
+.modal{position:fixed;inset:0;z-index:2600;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:20px}
+.modal.on{display:flex}
+.mbox{background:#fff;border-radius:18px;padding:24px;max-width:560px;width:100%;max-height:90vh;overflow-y:auto}
+.flow{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#f6f7f9;border-radius:12px;padding:12px;margin:12px 0;font-size:12px;text-align:center;font-weight:700}
+.flow span{flex:1}.flow i{font-style:normal;color:var(--mut)}
+#qrBox{display:flex;justify-content:center;margin:14px 0}
+pre.json{background:#14161a;color:#a7f3c0;border-radius:10px;padding:12px;font-size:11px;overflow-x:auto;max-height:320px;margin-top:8px}
+details summary{cursor:pointer;font-weight:700;font-size:13px;margin-top:10px}
+.bdg.tw{background:#e0e7ff;color:#3730a3}.bdg.twe{background:#fee2e2;color:#991b1b}
+.bdg.app{background:#e0f2fe;color:#075985}
+.ph2{height:160px;border-radius:12px;overflow:hidden;margin:8px 0}.ph2 img{width:100%;height:100%;object-fit:cover}
+.desc{font-size:14px;color:#374151;background:#f6f7f9;border-radius:10px;padding:10px;margin-top:10px}
 .clock{font-variant-numeric:tabular-nums;font-size:13px;color:#e5e7eb}
 .demo{font-size:11px;background:#3b2a12;color:#fdba74;padding:4px 8px;border-radius:6px;font-weight:700}
 .sw{display:flex;align-items:center;gap:6px;font-size:12px;color:#d1d5db}
@@ -137,9 +149,12 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
       <button data-v="zonas">Zonas de riesgo</button>
     </div>
     <div class="hright">
-      <span class="demo">DATOS DE DEMOSTRACIÓN</span>
-      <label class="sw"><input type="checkbox" id="simTg" checked> Simulación en vivo</label>
-      <span class="live" id="liveTag"><i></i>EN VIVO</span>
+      <span class="demo" title="El historial de 90 días es simulado; las alertas en vivo vienen de la app">HISTORIAL DE DEMOSTRACIÓN</span>
+      <label class="sw"><input type="checkbox" id="simTg"> Auto-simular</label>
+      <button class="btn sm" id="phoneBtn" style="display:none">📱 Conectar celular</button>
+      <button class="btn sm sec" id="resetBtn" style="display:none">↺ Reiniciar</button>
+      <span class="demo" id="towerTag" style="display:none;background:#0c2d48;color:#93c5fd"></span>
+      <span class="live off" id="liveTag"><i></i>CONECTANDO…</span>
       <span class="clock" id="clock"></span>
     </div>
   </div>
@@ -227,11 +242,24 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
   </section>
 </main>
 
+<div class="modal" id="phoneModal" onclick="if(event.target===this)this.classList.remove('on')">
+  <div class="mbox">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="font-size:19px">Conectar celulares a este servidor</h3><button class="btn out sm" onclick="$('phoneModal').classList.remove('on')">✕</button></div>
+    <div class="flow"><span>📱<br>index.html<br><i>celular</i></span><i>→</i><span>🖥<br>Servidor<br><i>este monitoreo</i></span><i>→</i><span>📡<br>Torre<br><i>Cell Broadcast</i></span></div>
+    <p style="font-size:13px;color:var(--mut)">Conecta el celular a la <b>misma red Wi-Fi</b> que esta computadora y escanea el código, o escribe la dirección en el navegador del celular:</p>
+    <div id="qrBox"></div>
+    <div style="text-align:center"><code id="appUrl" style="background:#f3f4f6;padding:6px 10px;border-radius:8px;font-size:15px;font-weight:700"></code></div>
+    <div class="desc" id="towerInfo" style="margin-top:16px"></div>
+    <button class="btn" id="testTower" style="width:100%;margin-top:10px">📡 Probar torre (envía un mensaje de prueba)</button>
+    <div id="testOut" style="font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
 <div class="shade" id="shade"></div>
 <aside class="drawer" id="drawer"></aside>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 /* ================= CONFIGURACIÓN ================= */
 const CENTER={lat:17.9583,lng:-102.1944};
@@ -275,6 +303,11 @@ function pickW(items,wf,rnd){const tot=items.reduce((s,x)=>s+wf(x),0);let r=rnd(
 function offset(p,km,deg){const b=deg*Math.PI/180;return{lat:p.lat+km/111*Math.cos(b),lng:p.lng+km/(111*Math.cos(p.lat*Math.PI/180))*Math.sin(b)};}
 ZONES.forEach(z=>z.c=offset(CENTER,z.km,z.deg));
 const zoneById=id=>ZONES.find(z=>z.id===id);
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function dist(a,b){const R=6371,t=Math.PI/180,dl=(b.lat-a.lat)*t,dg=(b.lng-a.lng)*t;const h=Math.sin(dl/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dg/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function nearestZone(p){return ZONES.reduce((b,z)=>dist(p,z.c)<dist(p,b.c)?z:b,ZONES[0]);}
+function towerBadge(a){if(!a.cbc)return'';const c=a.cbc;return c.status==='enviado'?`<span class="bdg tw" title="${esc(c.message)}">📡 Torre #${c.messageId}</span>`:c.status==='detenido'?`<span class="bdg r">📡 Torre #${c.messageId} detenida</span>`:c.status==='enviando'?`<span class="bdg tw">📡 Enviando a torre…</span>`:`<span class="bdg twe" title="${esc(c.error)}">📡 Torre: error</span>`;}
+function originBadge(a){return a.origin==='app'?'<span class="bdg app">📱 App</span>':a.origin==='simulador'?'<span class="bdg app">📱 Simulada en app</span>':a.origin==='monitor'?'<span class="bdg">🖥 Monitoreo</span>':'';}
 function fmtDate(t){return new Date(t).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
 function fmtTime(t){return new Date(t).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});}
 function dur(m){if(m==null)return'—';if(m<60)return m+' min';const h=Math.floor(m/60);return h+' h '+(m%60?m%60+' min':'');}
@@ -298,7 +331,7 @@ function build(t,cat,z,rnd,active){
   if(!active){
     if(!verified&&rnd()<.12){a.status='retirada';a.resMin=Math.round(5+rnd()*40);}
     else{a.status='resuelta';a.resMin=Math.round(c.res[0]+rnd()*(c.res[1]-c.res[0]));a.ri=Math.min(c.radios.length-1,Math.floor(a.resMin/15));}
-    if(t+a.resMin*60000>Date.now()){a.status='activa';a.resMin=null;}
+    if(t+a.resMin*60000>Date.now())a.resMin=Math.max(1,Math.floor((Date.now()-t)/60000));
   }
   if(a.verMin!=null)a.verMin=Math.min(a.verMin,Math.floor((Date.now()-t)/60000));
   return a;
@@ -318,11 +351,11 @@ function randomEvent(rnd,t){
     if(t>now)continue;
     list.push(build(t,cat,z,R,false));
   }
-  for(let i=0;i<5;i++){const {cat,z}=randomEvent(R);list.push(build(now-Math.floor(R()*150)*60000,cat,z,R,true));}
   list.sort((a,b)=>a.t-b.t).forEach(a=>a.id='A-'+(++seq));
   DATA=list.reverse();
 })();
-function updateRadii(){DATA.forEach(a=>{if(a.status!=='activa')return;const R2=CATS[a.cat].radios;a.ri=Math.min(R2.length-1,Math.floor((Date.now()-a.t)/60000*a.speed/15));});}
+function riOf(a){const R2=CATS[a.cat].radios,end=a.closedAt||Date.now();return Math.min(R2.length-1,Math.max(0,Math.floor((end-a.t)*(a.speed||1)/900000)));}
+function updateRadii(){DATA.forEach(a=>{if(a.status==='activa')a.ri=riOf(a);});}
 function inPeriod(days,from){const now=Date.now();return a=>a.t>=now-days*DAY-(from||0)&&a.t<now-(from||0);}
 
 /* ================= NAVEGACIÓN ================= */
@@ -360,12 +393,13 @@ function initLiveMap(){
 function renderLiveMap(){
   if(!liveMap)return;
   const act=DATA.filter(a=>a.status==='activa'),ids=new Set(act.map(a=>a.id));
-  for(const [id,l] of liveLayers)if(!ids.has(id)){liveMap.removeLayer(l.m);liveMap.removeLayer(l.c);liveLayers.delete(id);}
+  for(const [id,l] of liveLayers)if(!ids.has(id)){liveMap.removeLayer(l.m);liveMap.removeLayer(l.c);if(l.p)liveMap.removeLayer(l.p);liveLayers.delete(id);}
   act.forEach(a=>{
     const c=CATS[a.cat],col=GROUPS[c.g].col;let l=liveLayers.get(a.id);
     if(!l){l={c:L.circle([a.lat,a.lng],{radius:radius(a)*1000,color:col,fillColor:col,fillOpacity:.08,weight:2,dashArray:a.verified?null:'6 6'}).addTo(liveMap),
       m:L.marker([a.lat,a.lng],{icon:L.divIcon({className:'',html:`<div class="pin" style="background:${col}">${c.ic}</div>`,iconSize:[30,30],iconAnchor:[15,15]})}).addTo(liveMap).on('click',()=>openDrawer(a.id))};liveLayers.set(a.id,l);}
-    l.c.setRadius(radius(a)*1000);l.c.setStyle({dashArray:a.verified?null:'6 6'});
+    l.c.setLatLng([a.lat,a.lng]);l.c.setRadius(radius(a)*1000);l.c.setStyle({dashArray:a.verified?null:'6 6'});l.m.setLatLng([a.lat,a.lng]);
+    if(a.trail&&a.trail.length>1){if(!l.p)l.p=L.polyline(a.trail,{color:'#d62828',weight:3,dashArray:'4 6'}).addTo(liveMap);else l.p.setLatLngs(a.trail);}
   });
 }
 function toggleHeat(){
@@ -382,7 +416,7 @@ function renderFeed(){
   $('feed').innerHTML=act.length?act.map(a=>{const c=CATS[a.cat];return`<div class="fc ${a._new?'new':''}" style="border-left-color:${GROUPS[c.g].col}" onclick="openDrawer('${a.id}')">
     <div class="t"><span>${c.ic}</span>${c.n}<span style="margin-left:auto;font-size:11px;color:var(--mut);font-weight:600">${a.id}</span></div>
     <div class="m">${zoneById(a.zone).n} · ${ago(a.t)} · radio ${radius(a)} km · ≈${users(a)} usuarios</div>
-    <div class="badges"><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>${verBadge(a)}</div>
+    <div class="badges"><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>${verBadge(a)}${originBadge(a)}${towerBadge(a)}${a.conf?`<span class="bdg">📍 ${a.conf} confirm.</span>`:''}${a.flags?`<span class="bdg x">🚩 ${a.flags}/3</span>`:''}</div>
     <div class="acts" onclick="event.stopPropagation()">
       ${!a.verified?`<button class="btn sm sec" onclick="act('${a.id}','verificar')">✔ Verificar</button>`:''}
       <button class="btn sm ok" onclick="act('${a.id}','cerrar')">Cerrar como resuelta</button>
@@ -406,28 +440,137 @@ function renderCats(){
   $('cats').innerHTML=cnt.map(({k,n})=>`<div class="hb"><span>${CATS[k].ic} ${CATS[k].n}</span><div class="bar"><span style="width:${n/mx*100}%;background:${GROUPS[CATS[k].g].col}"></span></div><span class="n">${n}</span></div>`).join('');
 }
 function act(id,what){
-  const a=DATA.find(x=>x.id===id);if(!a)return;const c=CATS[a.cat];
-  if(what==='verificar'){a.verified=true;a.verMin=Math.max(1,Math.round((Date.now()-a.t)/60000));a.src='Operador C-ALERTA';log(`✔ ${a.id} verificada por operador (${c.n})`);toast(`${a.id} marcada como verificada. Los usuarios ven ahora la insignia ✔.`);}
-  if(what==='cerrar'){a.status='resuelta';a.resMin=Math.max(1,Math.round((Date.now()-a.t)/60000));log(`✅ ${a.id} cerrada como resuelta · se avisó a ≈${users(a)} usuarios`);toast(`${a.id} cerrada. Se notificó el cierre a ≈${users(a)} usuarios.`);}
-  if(what==='retirar'){a.status='retirada';a.resMin=Math.max(1,Math.round((Date.now()-a.t)/60000));log(`🚩 ${a.id} retirada por información falsa`);toast(`${a.id} retirada y enviada a revisión.`);}
-  refreshAll();if(openId===id)renderDrawer();
+  const m={verificar:'verify',cerrar:'resolve',retirar:'retire'}[what];
+  send(`alerts/${id}/${m}`,{by:'Operador C-ALERTA'});
 }
 
 /* ================= SIMULACIÓN EN VIVO ================= */
 let actx=null;
 function beep(){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const t=actx.currentTime,o=actx.createOscillator(),g=actx.createGain();o.type='square';o.frequency.setValueAtTime(950,t);o.frequency.setValueAtTime(700,t+.18);g.gain.setValueAtTime(.05,t);g.gain.setValueAtTime(0,t+.36);o.connect(g).connect(actx.destination);o.start(t);o.stop(t+.4);}catch(e){}}
 function simulate(){
-  const {cat,z}=randomEvent(Math.random);
-  const a=build(Date.now(),cat,z,Math.random,true);a.speed=45;a.id='A-'+(++seq);a._new=true;
-  DATA.unshift(a);const c=CATS[a.cat];
-  log(`🔔 Nueva alerta ${a.id}: ${c.n} en ${z.n} (${a.src})`);
-  toast(`<b>${c.ic} Nueva alerta · ${c.lvl}</b><br>${c.n} en ${z.n}. Radio inicial ${radius(a)} km, ≈${users(a)} usuarios notificados.`);
-  beep();refreshAll();
-  if(liveMap)liveMap.flyTo([a.lat,a.lng],14,{duration:.8});
+  const {cat,z}=randomEvent(Math.random),p=offset(z.c,Math.random()*0.9,Math.random()*360);
+  const ver=cat!=='panico'&&Math.random()<.5;
+  send('alerts',{cat,lat:p.lat,lng:p.lng,verified:ver,speed:90,owner:'monitor',origin:'monitor',
+    src:cat==='panico'?'Usuario (botón de pánico)':ver?(CATS[cat].g==='desastres'?'Protección Civil':'Seguridad Pública Mpal.'):'Reporte ciudadano'});
 }
 $('simBtn').onclick=simulate;
-let simIv=setInterval(()=>{if($('simTg').checked)simulate();},20000);
-$('simTg').onchange=()=>$('liveTag').classList.toggle('off',!$('simTg').checked);
+setInterval(()=>{if($('simTg').checked)simulate();},20000);
+
+/* ================= SINCRONIZACIÓN =================
+   Modo servidor: abierto desde server.js → recibe en tiempo real lo que pasa en todas las apps.
+   Modo local: abierto como archivo → se sincroniza con la app abierta en otra pestaña del mismo navegador. */
+const KEYS=['id','cat','lat','lng','t','speed','status','verified','src','conf','flags','desc','photo','origin','owner','verifiedAt','verifiedBy','closedAt','trail','cbc'];
+let TOWER=null;
+const Sync={mode:'local',bc:null};
+function plain(a){const o={};KEYS.forEach(k=>o[k]=a[k]===undefined?null:JSON.parse(JSON.stringify(a[k])));return o;}
+function makeAlert(b,id){
+  const now=Date.now(),ver=!!b.verified;
+  return{id,cat:b.cat,lat:+b.lat,lng:+b.lng,t:now,speed:Math.min(500,Math.max(1,+b.speed||1)),status:'activa',verified:ver,src:String(b.src||'Reporte ciudadano').slice(0,60),conf:0,flags:0,desc:String(b.desc||'').slice(0,500),photo:b.photo||null,origin:String(b.origin||'app'),owner:String(b.owner||''),verifiedAt:ver?now:null,verifiedBy:ver?b.src:null,closedAt:null,trail:b.cat==='panico'?[[+b.lat,+b.lng]]:null};
+}
+function applyAct(a,act,b){
+  b=b||{};const now=Date.now();if(a.status!=='activa')return a;
+  if(act==='confirm')a.conf++;
+  else if(act==='flag'){a.flags++;if(a.flags>=3&&!a.verified){a.status='retirada';a.closedAt=now;}}
+  else if(act==='verify'){a.verified=true;a.verifiedAt=now;a.verifiedBy=b.by||'Operador';}
+  else if(act==='resolve'){a.status='resuelta';a.closedAt=now;}
+  else if(act==='retire'){a.status='retirada';a.closedAt=now;}
+  else if(act==='move'){a.lat=+b.lat;a.lng=+b.lng;if(a.trail){a.trail.push([a.lat,a.lng]);if(a.trail.length>300)a.trail.shift();}}
+  return a;
+}
+function setConn(s){
+  const t=$('liveTag');t.classList.toggle('off',s!=='on');
+  t.innerHTML='<i></i>'+(s==='on'?'EN VIVO · SERVIDOR':s==='bad'?'RECONECTANDO…':'MODO LOCAL');
+  t.title=s==='local'?'Abierto como archivo: solo se sincroniza con la app abierta en este mismo navegador. Usa server.js para conectar celulares.':'';
+}
+async function initSync(){
+  if(location.protocol.startsWith('http')){
+    try{
+      const r=await fetch('/api/ping',{cache:'no-store'});
+      if(r.ok){
+        Sync.mode='server';$('resetBtn').style.display='';
+        try{const info=await r.clone().json();setupPhoneModal(info);}catch(e){}
+        try{TOWER=(await r.json()).cbc;const tt=$('towerTag');tt.style.display='';tt.textContent=TOWER&&TOWER.enabled?'📡 TORRE ACTIVA':'📡 TORRE APAGADA';tt.title=TOWER?TOWER.url+' · modo '+TOWER.mode:'';}catch(e){}
+        const es=new EventSource('/api/stream');
+        es.onopen=()=>setConn('on');
+        es.onerror=()=>setConn('bad');
+        es.onmessage=e=>{try{onEvent(JSON.parse(e.data));}catch(err){console.error(err);}};
+        return;
+      }
+    }catch(e){}
+  }
+  try{Sync.bc=new BroadcastChannel('alerta-cerca');Sync.bc.onmessage=e=>onEvent(e.data);}catch(e){}
+  setConn('local');log('Modo local: abre la app en otra pestaña de este navegador para sincronizar');
+}
+async function send(path,body){
+  if(Sync.mode==='server'){
+    try{const r=await fetch('/api/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});if(!r.ok)throw new Error((await r.json()).error);}
+    catch(e){toast('⚠️ No se pudo enviar al servidor: '+esc(e.message||'sin conexión'));}
+    return;
+  }
+  let ev;
+  if(path==='alerts')ev={type:'upsert',action:'create',alert:makeAlert(body,'A-L'+Math.random().toString(36).slice(2,6).toUpperCase())};
+  else{const [,id,act]=path.split('/');const cur=DATA.find(x=>x.id===id&&x.live);if(!cur)return;ev={type:'upsert',action:act,alert:applyAct(plain(cur),act,body)};}
+  onEvent(ev);try{Sync.bc&&Sync.bc.postMessage(ev);}catch(e){}
+}
+function toRec(d){
+  const r={...d,live:true,zone:nearestZone(d).id};
+  r.ri=riOf(r);
+  r.verMin=d.verifiedAt?Math.max(0,Math.round((d.verifiedAt-d.t)/60000)):null;
+  r.resMin=d.closedAt?Math.max(1,Math.round((d.closedAt-d.t)/60000)):null;
+  return r;
+}
+function merge(d){const r=toRec(d),i=DATA.findIndex(x=>x.id===r.id);if(i>=0){r._new=DATA[i]._new;DATA[i]=r;}else DATA.unshift(r);return r;}
+function onEvent(ev){
+  if(ev.type==='snapshot'){
+    ev.alerts.forEach(merge);DATA.sort((a,b)=>b.t-a.t);
+    log(`🔗 Sincronizado con el servidor · ${ev.alerts.filter(a=>a.status==='activa').length} alerta(s) activa(s)`);
+    refreshAll();return;
+  }
+  if(ev.type==='reset'){DATA=DATA.filter(a=>!a.live);log('↺ Alertas en vivo reiniciadas');closeDrawer();refreshAll();return;}
+  if(ev.type!=='upsert')return;
+  const r=merge(ev.alert),c=CATS[r.cat],z=zoneById(r.zone);
+  const who=r.origin==='app'?'📱 app móvil':r.origin==='simulador'?'📱 simulador de la app':'🖥 monitoreo';
+  switch(ev.action){
+    case 'create':
+      r._new=true;
+      log(`🔔 Nueva alerta ${r.id}: ${c.n} en ${z.n} · ${who}`);
+      toast(`<b>${c.ic} Nueva alerta · ${c.lvl}</b><br>${c.n} en ${z.n}<br><small>${esc(r.src)} · ${who}${r.photo?' · 📷 con foto':''}</small>`);
+      beep();
+      if(liveMap&&$('view-vivo').classList.contains('on'))liveMap.flyTo([r.lat,r.lng],14,{duration:.8});
+      break;
+    case 'confirm':log(`📍 ${r.id} recibió una confirmación ciudadana (${r.conf} en total)`);break;
+    case 'flag':log(r.status==='retirada'?`🚩 ${r.id} retirada automáticamente: 3 reportes de información falsa`:`🚩 ${r.id} reportada como falsa por un usuario (${r.flags}/3)`);break;
+    case 'verify':log(`✔ ${r.id} verificada por ${esc(r.verifiedBy||'operador')}`);toast(`✔ ${r.id} verificada. Los usuarios ven ahora la insignia de verificada.`);break;
+    case 'resolve':log(r.cat==='panico'?`✅ ${r.id}: la persona del botón de pánico está a salvo`:`✅ ${r.id} cerrada como resuelta · aviso a ≈${users(r)} usuarios`);toast(`✅ ${r.id} resuelta · ${c.n}`);break;
+    case 'cbc':{const t=r.cbc||{};
+      if(t.status==='enviado'){log(`📡 ${r.id} transmitida por la torre · message_id ${t.messageId}`);toast(`📡 ${r.id} enviada a la torre celular (message_id ${t.messageId})`);}
+      else if(t.status==='error'){log(`⚠️ ${r.id} no llegó a la torre (message_id ${t.messageId}): ${esc(t.error||'error')}`);toast(`⚠️ La torre no respondió para ${r.id}. Puedes reintentar desde el detalle.`);}
+      else if(t.status==='detenido')log(`📡 ${r.id} difusión detenida en la torre (message_id ${t.messageId})`);
+      break;}
+    case 'retire':log(`🚩 ${r.id} retirada por información falsa`);toast(`${r.id} retirada y enviada a revisión.`);break;
+  }
+  if(ev.action==='move'){renderLiveMap();if(openId===r.id)renderDrawer();return;}
+  refreshAll();if(openId===r.id)renderDrawer();
+}
+function setupPhoneModal(info){
+  $('phoneBtn').style.display='';
+  $('appUrl').textContent=info.appUrl;
+  try{$('qrBox').innerHTML='';new QRCode($('qrBox'),{text:info.appUrl,width:190,height:190});}catch(e){$('qrBox').textContent='(el QR necesita internet; usa la dirección de abajo)';}
+  const c=info.cbc||{};
+  $('towerInfo').innerHTML=c.enabled?`<b>📡 Torre:</b> ${esc(c.url)}<br>Modo: <b>${esc(c.mode)}</b> · Siguiente message_id: <b>${c.nextId}</b>`:'<b>📡 Torre desactivada</b> (CBC_ENABLED=0)';
+  $('testTower').style.display=c.enabled?'':'none';
+}
+$('phoneBtn').onclick=async()=>{try{const r=await fetch('/api/ping',{cache:'no-store'});setupPhoneModal(await r.json());}catch(e){}$('phoneModal').classList.add('on');};
+$('testTower').onclick=async()=>{
+  const b=$('testTower');b.disabled=true;b.textContent='Enviando a la torre…';
+  try{const d=await (await fetch('/api/cbc/test',{method:'POST'})).json();
+    $('testOut').innerHTML=d.ok?`<span style="color:var(--ok);font-weight:700">✅ La torre respondió HTTP ${d.status} · message_id ${d.messageId}</span>`:`<span style="color:var(--red);font-weight:700">❌ La torre no respondió bien (message_id ${d.messageId})</span><br>${esc(d.status?'HTTP '+d.status+' · ':'')}${esc(d.respuesta)}<br><small>Revisa que esta PC esté en la red de la torre: ${esc(d.url)}</small>`;
+    log(d.ok?`📡 Prueba de torre OK · message_id ${d.messageId}`:`⚠️ Prueba de torre falló · ${esc(d.respuesta)}`);
+  }catch(e){$('testOut').textContent='No se pudo contactar al servidor.';}
+  b.disabled=false;b.textContent='📡 Probar torre (envía un mensaje de prueba)';
+  try{const r=await fetch('/api/ping',{cache:'no-store'});setupPhoneModal(await r.json());}catch(e){}
+};
+$('resetBtn').onclick=()=>{if(confirm('¿Borrar todas las alertas en vivo de la demo? (el historial simulado se conserva)'))fetch('/api/reset',{method:'POST'});};
 
 /* ================= DETALLE (DRAWER) ================= */
 let openId=null;
@@ -436,19 +579,24 @@ function closeDrawer(){openId=null;$('drawer').classList.remove('on');$('shade')
 $('shade').onclick=closeDrawer;
 function renderDrawer(){
   const a=DATA.find(x=>x.id===openId);if(!a)return;const c=CATS[a.cat],z=zoneById(a.zone);
-  const ev=[{t:a.t,m:'Alerta creada',s:a.src}];
-  if(a.verMin!=null)ev.push({t:a.t+a.verMin*60000,m:'Verificada',s:a.src});
+  const ev=[{t:a.t,m:'Alerta creada',s:esc(a.src)+(a.live?' · '+(a.origin==='monitor'?'centro de monitoreo':'app móvil'):'')}];
+  if(a.verMin!=null)ev.push({t:a.t+a.verMin*60000,m:'Verificada',s:a.verifiedBy||a.src});
+  if(a.cbc&&a.cbc.status!=='enviando')ev.push({t:a.cbc.at,m:a.cbc.status==='error'?'Error al enviar a la torre celular':`Transmitida por la torre celular (message_id ${a.cbc.messageId})`,s:a.cbc.status==='error'?esc(a.cbc.error):'Cell Broadcast · llega a todos los celulares de la zona'});
+  if(a.cbc&&a.cbc.stopAt)ev.push({t:a.cbc.stopAt,m:'Difusión detenida en la torre',s:`message_id ${a.cbc.messageId}`});
+  if(a.trail&&a.trail.length>1)ev.push({t:Date.now(),m:`Ubicación en vivo actualizada ${a.trail.length-1} veces`,s:'Botón de pánico'});
   if(a.conf)ev.push({t:a.t+3*60000,m:`${a.conf} confirmaciones ciudadanas`,s:'Usuarios cercanos'});
-  for(let i=1;i<=a.ri;i++)ev.push({t:a.t+i*15/a.speed*60000,m:`Radio ampliado a ${c.radios[i]} km`,s:'Radio dinámico automático'});
+  for(let i=1;i<=a.ri;i++)ev.push({t:a.t+i*900000/(a.speed||1),m:`Radio ampliado a ${c.radios[i]} km`,s:'Radio dinámico automático'});
   if(a.status==='resuelta')ev.push({t:a.t+a.resMin*60000,m:'Cerrada como resuelta',s:`Aviso de cierre a ≈${users(a)} usuarios`});
   if(a.status==='retirada')ev.push({t:a.t+a.resMin*60000,m:'Retirada por información falsa',s:'Enviada a revisión'});
   ev.sort((x,y)=>x.t-y.t);const nowT=Date.now();ev.splice(0,ev.length,...ev.filter(e=>e.t<=nowT+1000));
   $('drawer').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="color:var(--mut);font-weight:700">${a.id}</span><button class="btn out sm" onclick="closeDrawer()">✕ Cerrar</button></div>
   <h3><span>${c.ic}</span>${c.n}</h3>
-  <div class="badges"><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>${stBadge(a)}${verBadge(a)}</div>
+  <div class="badges"><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span>${stBadge(a)}${verBadge(a)}${originBadge(a)}${towerBadge(a)}</div>
+  ${a.photo?`<div class="ph2"><img src="${esc(a.photo)}" alt="Foto enviada desde la app"></div>`:''}
+  ${a.desc?`<div class="desc">${esc(a.desc)}</div>`:''}
   <div class="kv">
     <div>Zona<b>${z.n}</b></div><div>Fecha<b>${fmtDate(a.t)}</b></div>
-    <div>Tipo<b>${GROUPS[c.g].n}</b></div><div>Fuente<b>${a.src}</b></div>
+    <div>Tipo<b>${GROUPS[c.g].n}</b></div><div>Fuente<b>${esc(a.src)}</b></div>
     <div>Radio ${a.status==='activa'?'actual':'máximo'}<b>${radius(a)} km</b></div><div>Usuarios alcanzados<b>≈ ${users(a)}</b></div>
     <div>Duración<b>${a.status==='activa'?'En curso ('+ago(a.t)+')':dur(a.resMin)}</b></div><div>Coordenadas<b style="font-size:12px">${a.lat.toFixed(4)}, ${a.lng.toFixed(4)}</b></div>
   </div>
@@ -458,8 +606,12 @@ function renderDrawer(){
     ${!a.verified?`<button class="btn sec" onclick="act('${a.id}','verificar')">✔ Verificar alerta</button>`:''}
     <button class="btn ok" onclick="act('${a.id}','cerrar')">Cerrar como resuelta</button>
     ${!a.verified?`<button class="btn out" onclick="act('${a.id}','retirar')">🚩 Retirar por información falsa</button>`:''}
+    ${Sync.mode==='server'&&a.live&&TOWER&&TOWER.enabled?`<button class="btn out" onclick="send('alerts/${a.id}/cbc');toast('📡 Reenviando a la torre…')">📡 ${a.cbc?'Reenviar':'Enviar'} a la torre celular</button>`:''}
+
   </div>`:''}
-  ${liveMap?`<button class="btn out" style="margin-top:8px;width:100%" onclick="verEnMapa('${a.id}')">📍 Ver en el mapa</button>`:''}`;
+  ${liveMap?`<button class="btn out" style="margin-top:8px;width:100%" onclick="verEnMapa('${a.id}')">📍 Ver en el mapa</button>`:''}
+    ${a.cbc&&a.cbc.message?`<div class="desc" style="font-size:12px"><b>Texto enviado a la torre:</b><br>${esc(a.cbc.message)}</div>`:''}
+    ${a.cbc&&a.cbc.payload?`<details><summary>Ver JSON enviado a la torre (message_id ${a.cbc.messageId})</summary><pre class="json">${esc(JSON.stringify(a.cbc.payload,null,2))}</pre></details>`:''}`;
 }
 function verEnMapa(id){const a=DATA.find(x=>x.id===id);closeDrawer();document.querySelector('.tabs button[data-v="vivo"]').click();setTimeout(()=>{liveMap.flyTo([a.lat,a.lng],15);if(a.status!=='activa')L.popup().setLatLng([a.lat,a.lng]).setContent(`<b>${a.id}</b><br>${CATS[a.cat].n}<br>${a.status}`).openOn(liveMap);},120);}
 
@@ -483,7 +635,7 @@ function renderHistory(){
   <div class="kpi"><div class="l">Usuarios alcanzados</div><div class="v">${d.reduce((s,a)=>s+users(a),0).toLocaleString('es-MX')}</div></div>`;
   $('tbody').innerHTML=d.slice(page*PER,page*PER+PER).map(a=>{const c=CATS[a.cat];return`<tr onclick="openDrawer('${a.id}')">
     <td><b>${a.id}</b></td><td>${fmtDate(a.t)}</td><td>${c.ic} ${c.n}</td><td>${zoneById(a.zone).n}</td>
-    <td><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span></td><td>${a.verified?'✔ ':''}${a.src}</td><td>${stBadge(a)}</td>
+    <td><span class="bdg ${lvlClass(c.lvl)}">${c.lvl}</span></td><td>${a.verified?'✔ ':''}${esc(a.src)}${a.live?' 📱':''}</td><td>${stBadge(a)}</td>
     <td>${radius(a)} km</td><td>≈${users(a)}</td><td>${a.status==='activa'?'En curso':dur(a.resMin)}</td></tr>`;}).join('')||'<tr><td colspan="10" class="empty">No hay alertas con estos filtros.</td></tr>';
   $('pinfo').textContent=`Página ${page+1} de ${pages} · ${d.length} registros`;
   $('prev').disabled=page===0;$('next').disabled=page>=pages-1;
@@ -565,8 +717,9 @@ setInterval(()=>{const before=DATA.filter(a=>a.status==='activa').map(a=>a.ri).j
   if(openId)renderDrawer();},5000);
 setInterval(renderFeed,30000);
 initLiveMap();
-log('Sistema iniciado · conectado al servidor de alertas');
+log('Sistema iniciado');
 refreshAll();
+initSync();
 </script>
 </body>
 </html>
