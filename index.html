@@ -256,17 +256,25 @@ function badges(a){
    Modo local: si se abrió como archivo, se sincroniza solo entre pestañas del mismo navegador. */
 const KEYS=['id','cat','lat','lng','t','speed','status','verified','src','conf','flags','desc','photo','origin','owner','verifiedAt','verifiedBy','closedAt','trail'];
 const Sync={mode:'local',bc:null};
-/* Dirección del servidor de monitoreo.
-   - Si la app se abrió desde el servidor (http://IP:3000/app) se usa esa misma dirección.
-   - Si index.html se abrió como archivo, se usa la que guardes tocando el indicador de conexión. */
-let API=(()=>{if(location.protocol.startsWith('http'))return location.origin;try{return localStorage.getItem('ac-server')||'';}catch(e){return'';}})();
+/* Dirección del servidor de monitoreo. Se prueba en este orden:
+   1) ?server=https://...  en la URL (así llega desde el QR de GitHub Pages)
+   2) el mismo sitio, si la app se abrió desde el servidor (http://IP:3000/app)
+   3) la dirección guardada tocando el indicador de conexión */
+const cleanUrl=u=>String(u||'').trim().replace(/\/+$/,'').replace(/\/app$/,'');
+let API='';
+const QS_SERVER=cleanUrl(new URLSearchParams(location.search).get('server'));
+function savedServer(){try{return localStorage.getItem('ac-server')||'';}catch(e){return'';}}
+function saveServer(u){try{u?localStorage.setItem('ac-server',u):localStorage.removeItem('ac-server');}catch(e){}}
 function configServer(){
-  const v=prompt('Dirección del servidor de monitoreo (ejemplo: http://192.168.1.50:3000)',API||'http://');
+  const v=prompt('Dirección del servidor de monitoreo\n• En la misma red: http://192.168.1.50:3000\n• Desde GitHub Pages: https://xxxx.trycloudflare.com\n(deja vacío para borrar)',API||savedServer()||'');
   if(v===null)return;
-  const clean=v.trim().replace(/\/+$/,'').replace(/\/app$/,'');
-  try{localStorage.setItem('ac-server',clean);}catch(e){}
-  if(location.protocol.startsWith('http')&&clean&&clean!==location.origin){location.href=clean+'/app';return;}
+  saveServer(cleanUrl(v));
+  if(QS_SERVER){const u=new URL(location.href);u.searchParams.delete('server');location.href=u.toString();return;}
   location.reload();
+}
+async function ping(base){
+  const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),4000);
+  try{const r=await fetch(base+'/api/ping',{cache:'no-store',signal:ctl.signal});clearTimeout(t);return r.ok;}catch(e){clearTimeout(t);return false;}
 }
 function plain(a){const o={};KEYS.forEach(k=>o[k]=a[k]===undefined?null:JSON.parse(JSON.stringify(a[k])));return o;}
 function makeAlert(b,id){ /* mismas reglas que server.js */
@@ -287,6 +295,14 @@ function applyAct(a,act,b){
 function setConn(s){const c=$('conn');c.className='conn'+(s==='on'?' on':s==='bad'?' bad':'');c.textContent=s==='on'?'● EN LÍNEA':s==='bad'?'SIN CONEXIÓN':'MODO LOCAL';}
 async function initSync(){
   $('conn').onclick=configServer;
+  const cands=[...new Set([QS_SERVER,location.protocol.startsWith('http')?location.origin:'',savedServer()].filter(Boolean))];
+  for(const c of cands){if(await ping(c)){API=c;break;}}
+  if(API&&API!==location.origin)saveServer(API);
+  if(!API&&cands.length){
+    const httpsBlock=location.protocol==='https:'&&cands.some(c=>c.startsWith('http:'));
+    toast(httpsBlock?'⚠️ Esta página es HTTPS (GitHub Pages) y el servidor es http://. Usa la dirección HTTPS del túnel (toca el indicador de arriba).':'⚠️ No se encontró el servidor de monitoreo. Toca el indicador de arriba para escribir su dirección.');
+    if(cands.some(c=>c!==location.origin))API=cands.find(c=>c!==location.origin);
+  }
   if(API){
     try{
       const r=await fetch(API+'/api/ping',{cache:'no-store'});

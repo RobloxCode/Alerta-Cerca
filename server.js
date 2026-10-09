@@ -19,6 +19,43 @@ const os = require('os');
 
 const PORT = process.env.PORT || 3000;
 const DIR = __dirname;
+
+/* ======================================================================
+   CONFIGURACIÓN EDITABLE (se guarda en config.json)
+   La IP de la torre NO está fija en el código. Puedes cambiarla de 3 formas:
+     1) Desde el monitoreo: 📱 Conectar celular → ⚙️ Torre → Guardar   (no hay que reiniciar)
+     2) Al iniciar:          node server.js 192.168.3.200
+     3) Editando config.json y reiniciando el servidor
+   ====================================================================== */
+const CONFIG_FILE = path.join(DIR, 'config.json');
+const DEFAULT_CONFIG = {
+  torreIp: '192.168.3.151',          /* valor inicial; después manda lo que diga config.json */
+  torrePuerto: 8080,
+  torreRuta: '/api/ecbe/v1/message',
+  githubUrl: '',                     /* ej. https://usuario.github.io/hackaitlac/ */
+  servidorPublico: ''                /* ej. https://algo.trycloudflare.com (túnel HTTPS) */
+};
+let CONFIG = { ...DEFAULT_CONFIG };
+try { CONFIG = { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')) }; } catch (e) { /* se crea abajo */ }
+const HOST_RE = /^[a-zA-Z0-9.-]{1,253}$/;
+if (process.argv[2]) {
+  const [ip, port] = process.argv[2].split(':');
+  if (HOST_RE.test(ip)) { CONFIG.torreIp = ip; if (port && +port > 0 && +port < 65536) CONFIG.torrePuerto = +port; }
+  else console.log(`  ⚠️  "${process.argv[2]}" no parece una IP válida; se ignora.`);
+}
+if (process.env.TORRE_IP && HOST_RE.test(process.env.TORRE_IP)) CONFIG.torreIp = process.env.TORRE_IP;
+if (process.env.TORRE_PUERTO) CONFIG.torrePuerto = +process.env.TORRE_PUERTO;
+function saveConfig() { fs.writeFileSync(CONFIG_FILE, JSON.stringify(CONFIG, null, 2)); }
+saveConfig();
+function towerUrl() {
+  return process.env.CBC_URL || `http://${CONFIG.torreIp}:${CONFIG.torrePuerto}${CONFIG.torreRuta}`;
+}
+/* Solo la computadora del monitoreo (localhost) puede cambiar la configuración o reiniciar la demo */
+function isAdminReq(req) {
+  const ip = req.socket.remoteAddress || '';
+  const loop = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  return loop && !req.headers['cf-connecting-ip'] && !req.headers['x-forwarded-for'];
+}
 const DB = path.join(DIR, 'alertas.json');
 const CAT_KEYS = ['menor', 'adulto', 'vehiculo', 'casa', 'asalto', 'panico', 'incendio', 'inundacion', 'accidente'];
 
@@ -44,13 +81,13 @@ function save() {
    TORRE CELULAR (Cell Broadcast / ETWS)
    Cada alerta nueva se envía a la API de la torre con un message_id distinto.
    Configuración con variables de entorno (o cambia los valores por defecto aquí):
-     CBC_URL         URL de la API de la torre
+     (la IP y el puerto de la torre se configuran arriba, en config.json)
+    CBC_URL         URL completa de la torre (opcional, reemplaza a config.json)
      CBC_ENABLED     1 = enviar, 0 = no enviar
      CBC_MODE        todas | verificadas | criticas   (qué alertas se mandan a la torre)
      CBC_FIRST_ID    primer message_id a usar (después se incrementa solo)
    ====================================================================== */
 const CBC = {
-  url: process.env.CBC_URL || 'http://192.168.3.151:8080/api/ecbe/v1/message',
   enabled: process.env.CBC_ENABLED !== '0',
   mode: process.env.CBC_MODE || 'todas',
   firstId: +(process.env.CBC_FIRST_ID || 5371),
@@ -139,13 +176,13 @@ async function sendToTower(a, force) {
   let payload = cbcPayload(a, messageId, CBC.warningType);
   a.cbc = { status: 'enviando', messageId, at: Date.now(), message: cbcMessage(a), payload };
   broadcast({ type: 'upsert', action: 'cbc', alert: a });
-  console.log(`   📡 ${a.id} → torre ${CBC.url} · message_id ${messageId}`);
-  let r = await httpRequest('POST', CBC.url, payload);
+  console.log(`   📡 ${a.id} → torre ${towerUrl()} · message_id ${messageId}`);
+  let r = await httpRequest('POST', towerUrl(), payload);
   /* si la torre no acepta el tipo de alerta, se reintenta con "earthquake" (el que funcionó en tu prueba con curl) */
   if (!r.ok && r.status >= 400 && r.status < 500 && CBC.warningType !== 'earthquake') {
     console.log(`   📡 la torre rechazó warning_type "${CBC.warningType}" (${r.status}); reintentando con "earthquake"`);
     payload = cbcPayload(a, messageId, 'earthquake');
-    r = await httpRequest('POST', CBC.url, payload);
+    r = await httpRequest('POST', towerUrl(), payload);
   }
   a.cbc.payload = payload;
   a.cbc = { ...a.cbc, status: r.ok ? 'enviado' : 'error', httpStatus: r.status, error: r.ok ? null : r.text, at: Date.now() };
@@ -157,7 +194,7 @@ async function sendToTower(a, force) {
 /* Al cerrar o retirar una alerta se pide a la torre que deje de repetirla (si la API lo permite) */
 async function stopTowerBroadcast(a) {
   if (!CBC.stopOnClose || !a.cbc || a.cbc.status !== 'enviado') return;
-  const r = await httpRequest('DELETE', `${CBC.url.replace(/\/$/, '')}/${a.cbc.messageId}`);
+  const r = await httpRequest('DELETE', `${towerUrl().replace(/\/$/, '')}/${a.cbc.messageId}`);
   a.cbc = { ...a.cbc, status: r.ok ? 'detenido' : 'enviado', stopAt: r.ok ? Date.now() : null };
   console.log(r.ok ? `   📡 ${a.id} difusión detenida en la torre (message_id ${a.cbc.messageId})`
                    : `   ℹ️  la torre no confirmó la cancelación de ${a.cbc.messageId} (${r.status || r.text}); se detendrá sola al terminar sus repeticiones`);
@@ -251,7 +288,7 @@ a.b.k{background:#14161a}#qr{display:flex;justify-content:center;margin:18px 0}
 code{background:#f3f4f6;padding:3px 6px;border-radius:6px;font-size:13px}button{margin-top:14px;border:1.5px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}</style></head>
 <body><div class="c"><h1>ALERTA <span>CERCA</span></h1><p>Servidor de sincronización activo · ${clients.size} dispositivo(s) conectado(s) · ${alerts.length} alerta(s)</p>
 <a class="b k" href="/">🖥 Abrir centro de monitoreo</a><a class="b" href="/app">📱 Abrir app móvil (index.html)</a>
-<p style="font-size:13px">📡 Torre: ${CBC.enabled ? `<b>activa</b> · ${CBC.url}<br>modo: ${CBC.mode} · último message_id: ${cbcSeq ?? '(ninguno)'}` : '<b>desactivada</b>'}</p>
+<p style="font-size:13px">📡 Torre: ${CBC.enabled ? `<b>activa</b> · ${towerUrl()}<br>modo: ${CBC.mode} · último message_id: ${cbcSeq ?? '(ninguno)'}` : '<b>desactivada</b>'}</p>
 ${CBC.enabled ? `<button onclick="this.disabled=true;this.textContent='Enviando…';fetch('/api/cbc/test',{method:'POST'}).then(r=>r.json()).then(d=>{alert((d.ok?'✅ La torre respondió OK':'❌ La torre no respondió bien')+'\nmessage_id: '+d.messageId+'\nHTTP: '+d.status+'\n'+(d.respuesta||''));location.reload();})">📡 Probar torre</button>` : ''}
 <p>Escanea con el celular (misma red Wi-Fi):</p><div id="qr"></div><code>${base}/app</code>
 <div><button onclick="if(confirm('¿Borrar todas las alertas en vivo?'))fetch('/api/reset',{method:'POST'}).then(()=>location.reload())">↺ Reiniciar alertas de la demo</button></div></div>
@@ -272,7 +309,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
 
-    if (p === '/api/ping') return json(res, 200, { ok: true, alerts: alerts.length, clients: clients.size, appUrl: appUrl(req), cbc: { enabled: CBC.enabled, url: CBC.url, mode: CBC.mode, lastId: cbcSeq, nextId: cbcSeq == null ? CBC.firstId : cbcSeq + 1 } });
+    if (p === '/api/ping') return json(res, 200, { ok: true, alerts: alerts.length, clients: clients.size, appUrl: appUrl(req), cbc: { enabled: CBC.enabled, url: towerUrl(), mode: CBC.mode, lastId: cbcSeq, nextId: cbcSeq == null ? CBC.firstId : cbcSeq + 1 }, config: CONFIG, admin: isAdminReq(req), fixedByEnv: !!process.env.CBC_URL });
 
     if (p === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no', ...CORS });
@@ -308,15 +345,37 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, a);
     }
 
+    if (req.method === 'POST' && p === '/api/config') {
+      if (!isAdminReq(req)) return json(res, 403, { error: 'Solo se puede cambiar desde la computadora del monitoreo (localhost).' });
+      const b = await body(req);
+      if (b.torreIp !== undefined) {
+        const ip = String(b.torreIp).trim();
+        if (!HOST_RE.test(ip)) return json(res, 400, { error: 'IP o nombre de la torre no válido' });
+        CONFIG.torreIp = ip;
+      }
+      if (b.torrePuerto !== undefined) {
+        const port = +b.torrePuerto;
+        if (!(port > 0 && port < 65536)) return json(res, 400, { error: 'Puerto no válido' });
+        CONFIG.torrePuerto = port;
+      }
+      if (b.githubUrl !== undefined) CONFIG.githubUrl = String(b.githubUrl).trim().slice(0, 300);
+      if (b.servidorPublico !== undefined) CONFIG.servidorPublico = String(b.servidorPublico).trim().replace(/\/+$/, '').slice(0, 300);
+      saveConfig();
+      console.log(`  ⚙️  Configuración actualizada · torre: ${towerUrl()}`);
+      return json(res, 200, { ok: true, config: CONFIG, url: towerUrl() });
+    }
+
     if (req.method === 'POST' && p === '/api/cbc/test') {
+      if (!isAdminReq(req)) return json(res, 403, { error: 'Solo desde la computadora del monitoreo' });
       const test = { id: 'PRUEBA', cat: 'accidente', lat: 17.9583, lng: -102.1944, verified: true, status: 'activa', desc: 'Mensaje de prueba del sistema, no requiere accion.' };
       const messageId = nextMessageId();
-      const r = await httpRequest('POST', CBC.url, cbcPayload(test, messageId, CBC.warningType));
+      const r = await httpRequest('POST', towerUrl(), cbcPayload(test, messageId, CBC.warningType));
       console.log(`   📡 prueba de torre · message_id ${messageId} · ${r.ok ? 'OK' : 'ERROR'} ${r.status || ''} ${r.ok ? '' : r.text}`);
-      return json(res, r.ok ? 200 : 502, { ok: r.ok, messageId, status: r.status, respuesta: r.text, url: CBC.url });
+      return json(res, r.ok ? 200 : 502, { ok: r.ok, messageId, status: r.status, respuesta: r.text, url: towerUrl() });
     }
 
     if (req.method === 'POST' && p === '/api/reset') {
+      if (!isAdminReq(req)) return json(res, 403, { error: 'Solo desde la computadora del monitoreo' });
       alerts = []; save(); broadcast({ type: 'reset' });
       console.log('↺ alertas reiniciadas');
       return json(res, 200, { ok: true });
@@ -337,8 +396,9 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log('\n  ALERTA CERCA · servidor del centro de monitoreo\n');
   console.log(`  1) Monitoreo (esta PC):  http://localhost:${PORT}`);
+  if (CONFIG.githubUrl && CONFIG.servidorPublico) console.log(`     App en GitHub Pages:  ${CONFIG.githubUrl}?server=${encodeURIComponent(CONFIG.servidorPublico)}`);
   lanIPs().forEach(ip => console.log(`  2) App del celular:      http://${ip}:${PORT}/app`));
   console.log(CBC.enabled
-    ? `  Torre (Cell Broadcast): ${CBC.url}\n                          modo "${CBC.mode}" · siguiente message_id ${cbcSeq == null ? CBC.firstId : cbcSeq + 1}\n`
+    ? `  Torre (Cell Broadcast): ${towerUrl()}\n                          modo "${CBC.mode}" · siguiente message_id ${cbcSeq == null ? CBC.firstId : cbcSeq + 1}\n`
     : '  Torre (Cell Broadcast): desactivada (CBC_ENABLED=0)\n');
 });

@@ -30,6 +30,10 @@ header{background:#14161a;color:#fff;position:sticky;top:0;z-index:1500}
 .flow{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#f6f7f9;border-radius:12px;padding:12px;margin:12px 0;font-size:12px;text-align:center;font-weight:700}
 .flow span{flex:1}.flow i{font-style:normal;color:var(--mut)}
 #qrBox{display:flex;justify-content:center;margin:14px 0}
+.cfg{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.cfg label{font-size:12px;color:var(--mut);font-weight:600;display:flex;flex-direction:column;gap:4px}
+.cfg input{padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;color:var(--tx)}
+#ghBox+div,.cfg+.cfg{margin-top:8px}
 pre.json{background:#14161a;color:#a7f3c0;border-radius:10px;padding:12px;font-size:11px;overflow-x:auto;max-height:320px;margin-top:8px}
 details summary{cursor:pointer;font-weight:700;font-size:13px;margin-top:10px}
 .bdg.tw{background:#e0e7ff;color:#3730a3}.bdg.twe{background:#fee2e2;color:#991b1b}
@@ -250,8 +254,30 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <div id="qrBox"></div>
     <div style="text-align:center"><code id="appUrl" style="background:#f3f4f6;padding:6px 10px;border-radius:8px;font-size:15px;font-weight:700"></code></div>
     <div class="desc" id="towerInfo" style="margin-top:16px"></div>
-    <button class="btn" id="testTower" style="width:100%;margin-top:10px">📡 Probar torre (envía un mensaje de prueba)</button>
+
+    <h4 style="margin-top:18px">⚙️ Torre (Cell Broadcast)</h4>
+    <div class="cfg">
+      <label>IP de la torre<input id="cfgIp" placeholder="192.168.3.151"></label>
+      <label>Puerto<input id="cfgPort" type="number" min="1" max="65535" placeholder="8080"></label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn sec" id="saveTower" style="flex:1">💾 Guardar IP</button>
+      <button class="btn" id="testTower" style="flex:1">📡 Probar torre</button>
+    </div>
     <div id="testOut" style="font-size:13px;margin-top:8px"></div>
+
+    <h4 style="margin-top:18px">🌐 App desde GitHub Pages (opcional)</h4>
+    <p style="font-size:12px;color:var(--mut);margin:4px 0 8px">GitHub Pages usa HTTPS, así que el servidor también necesita una dirección HTTPS (túnel). Ver LEEME.</p>
+    <div class="cfg">
+      <label>URL de GitHub Pages<input id="cfgGh" placeholder="https://usuario.github.io/hackaitlac/"></label>
+      <label>URL HTTPS del servidor (túnel)<input id="cfgPub" placeholder="https://xxxx.trycloudflare.com"></label>
+    </div>
+    <button class="btn sec" id="saveGh" style="width:100%;margin-top:8px">💾 Guardar y generar QR</button>
+    <div id="ghBox" style="display:none;text-align:center;margin-top:12px">
+      <div id="qrGh" style="display:flex;justify-content:center"></div>
+      <code id="ghUrl" style="display:block;margin-top:8px;font-size:12px;word-break:break-all"></code>
+    </div>
+    <div id="cfgMsg" style="font-size:13px;margin-top:8px"></div>
   </div>
 </div>
 <div class="shade" id="shade"></div>
@@ -559,7 +585,33 @@ function setupPhoneModal(info){
   const c=info.cbc||{};
   $('towerInfo').innerHTML=c.enabled?`<b>📡 Torre:</b> ${esc(c.url)}<br>Modo: <b>${esc(c.mode)}</b> · Siguiente message_id: <b>${c.nextId}</b>`:'<b>📡 Torre desactivada</b> (CBC_ENABLED=0)';
   $('testTower').style.display=c.enabled?'':'none';
+  const cf=info.config||{};
+  if(document.activeElement!==$('cfgIp'))$('cfgIp').value=cf.torreIp||'';
+  if(document.activeElement!==$('cfgPort'))$('cfgPort').value=cf.torrePuerto||'';
+  $('cfgGh').value=cf.githubUrl||'';$('cfgPub').value=cf.servidorPublico||'';
+  ['cfgIp','cfgPort','saveTower','cfgGh','cfgPub','saveGh'].forEach(id=>$(id).disabled=!info.admin||(info.fixedByEnv&&['cfgIp','cfgPort','saveTower'].includes(id)));
+  if(!info.admin)$('cfgMsg').textContent='La configuración solo se puede cambiar desde la computadora del monitoreo (http://localhost).';
+  if(info.fixedByEnv)$('cfgMsg').textContent='La URL de la torre está fijada con CBC_URL al iniciar el servidor; quítala para poder cambiarla aquí.';
+  renderGhQr(cf);
+  const tt=$('towerTag');if(c.enabled){tt.title=c.url+' · modo '+c.mode;}
 }
+function renderGhQr(cf){
+  if(!cf.githubUrl||!cf.servidorPublico){$('ghBox').style.display='none';return;}
+  const url=cf.githubUrl+(cf.githubUrl.includes('?')?'&':'?')+'server='+encodeURIComponent(cf.servidorPublico);
+  $('ghBox').style.display='';$('ghUrl').textContent=url;
+  try{$('qrGh').innerHTML='';new QRCode($('qrGh'),{text:url,width:170,height:170});}catch(e){}
+}
+async function saveConfig(data){
+  try{
+    const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const d=await r.json();if(!r.ok)throw new Error(d.error);
+    $('cfgMsg').innerHTML=`<span style="color:var(--ok);font-weight:700">✅ Guardado.</span> Torre: ${esc(d.url)}`;
+    log(`⚙️ Configuración actualizada · torre ${esc(d.url)}`);
+    const p=await (await fetch('/api/ping',{cache:'no-store'})).json();TOWER=p.cbc;setupPhoneModal(p);
+  }catch(e){$('cfgMsg').innerHTML=`<span style="color:var(--red);font-weight:700">❌ ${esc(e.message)}</span>`;}
+}
+$('saveTower').onclick=()=>saveConfig({torreIp:$('cfgIp').value,torrePuerto:$('cfgPort').value});
+$('saveGh').onclick=()=>saveConfig({githubUrl:$('cfgGh').value,servidorPublico:$('cfgPub').value});
 $('phoneBtn').onclick=async()=>{try{const r=await fetch('/api/ping',{cache:'no-store'});setupPhoneModal(await r.json());}catch(e){}$('phoneModal').classList.add('on');};
 $('testTower').onclick=async()=>{
   const b=$('testTower');b.disabled=true;b.textContent='Enviando a la torre…';
@@ -567,7 +619,7 @@ $('testTower').onclick=async()=>{
     $('testOut').innerHTML=d.ok?`<span style="color:var(--ok);font-weight:700">✅ La torre respondió HTTP ${d.status} · message_id ${d.messageId}</span>`:`<span style="color:var(--red);font-weight:700">❌ La torre no respondió bien (message_id ${d.messageId})</span><br>${esc(d.status?'HTTP '+d.status+' · ':'')}${esc(d.respuesta)}<br><small>Revisa que esta PC esté en la red de la torre: ${esc(d.url)}</small>`;
     log(d.ok?`📡 Prueba de torre OK · message_id ${d.messageId}`:`⚠️ Prueba de torre falló · ${esc(d.respuesta)}`);
   }catch(e){$('testOut').textContent='No se pudo contactar al servidor.';}
-  b.disabled=false;b.textContent='📡 Probar torre (envía un mensaje de prueba)';
+  b.disabled=false;b.textContent='📡 Probar torre';
   try{const r=await fetch('/api/ping',{cache:'no-store'});setupPhoneModal(await r.json());}catch(e){}
 };
 $('resetBtn').onclick=()=>{if(confirm('¿Borrar todas las alertas en vivo de la demo? (el historial simulado se conserva)'))fetch('/api/reset',{method:'POST'});};
