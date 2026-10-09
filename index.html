@@ -112,6 +112,30 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
 .chips button span{font-size:20px;margin-right:4px}
 .toast{position:absolute;left:12px;right:12px;top:12px;z-index:4000;background:#14161a;color:#fff;border-radius:12px;padding:12px 14px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.3);transform:translateY(-140%);transition:transform .3s}
 .toast.on{transform:none}
+.priv{position:absolute;inset:0;z-index:4500;background:rgba(10,12,16,.75);display:flex;align-items:flex-end}
+.priv.hidden{display:none}
+.pbox{background:#fff;width:100%;max-height:92%;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px 18px 22px;animation:up .3s}
+.pbox h2{font-size:20px;display:flex;gap:8px;align-items:center}
+.pbox .lead{font-size:13px;color:var(--mut);margin:6px 0 12px}
+.pi{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f1f2f4;font-size:13px;color:#374151;line-height:1.45}
+.pi .e{font-size:20px;line-height:1.2}
+.pi b{color:var(--tx)}
+.pbox details{font-size:12px;color:#374151;background:#f6f7f9;border-radius:12px;padding:10px 12px;margin:12px 0;line-height:1.5}
+.pbox details summary{font-weight:700;cursor:pointer}
+.pbox details p{margin-top:8px}
+.pck{display:flex;gap:10px;align-items:flex-start;font-size:13px;margin:10px 0;color:#374151}
+.pck input{width:20px;height:20px;margin-top:1px;flex-shrink:0;accent-color:var(--red)}
+.pck small{display:block;color:var(--mut)}
+.pv{padding-bottom:24px}
+.pv .pi{background:#fff;border-radius:12px;padding:12px;margin-bottom:8px;border:0}
+.pv details{background:#fff;font-size:12px;color:#374151;border-radius:12px;padding:12px;margin:12px 0;line-height:1.5}
+.pv details summary{font-weight:700;cursor:pointer;font-size:13px}
+.pv details p{margin-top:8px}
+.pvcard{background:#fff;border-radius:14px;padding:14px;margin-top:14px}
+.pvcard h3{font-size:15px;margin-bottom:6px}
+.pvstat{font-size:12px;border-radius:10px;padding:8px 10px;margin:10px 0;background:#ecfdf5;color:#166534;font-weight:600}
+.pvstat.off{background:#fef3c7;color:#92400e}
+.perr{color:var(--red);font-size:12px;font-weight:700;min-height:16px}
 @keyframes blink{50%{opacity:.35}}
 @keyframes flash{from{opacity:.95}to{opacity:.55}}
 @keyframes pop{from{transform:scale(.85);opacity:0}}
@@ -127,6 +151,7 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       <div class="pill"><i></i><span id="locTxt">Ubicación activa · Lázaro Cárdenas</span></div>
     </div>
     <span class="conn" id="conn" title="Toca para configurar el servidor">CONECTANDO…</span>
+    <button class="hbtn" id="privBtn" aria-label="Privacidad" title="Privacidad">🔒</button>
     <button class="hbtn" id="muteBtn" aria-label="Sonido">🔊</button>
   </header>
 
@@ -163,6 +188,32 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       </form>
     </section>
 
+    <section class="view pv" id="view-privacidad">
+      <h2 class="t">🔒 Privacidad</h2>
+      <p class="s">Qué hace ALERTA CERCA con tus datos y cómo controlarlo.</p>
+      <div class="pvstat" id="pvStat"></div>
+      <div class="pi"><span class="e">📍</span><div><b>Tu ubicación se queda en tu celular.</b> La usamos solo para saber si una alerta está cerca de ti. Para recibir alertas no la enviamos al servidor.</div></div>
+      <div class="pi"><span class="e">📨</span><div><b>Solo se comparte cuando tú lo decides:</b> al hacer un reporte o activar el botón de pánico se envía la ubicación de ese momento.</div></div>
+      <div class="pi"><span class="e">🆘</span><div><b>Botón de pánico:</b> mientras está activo, tu ubicación en vivo se comparte con tus contactos y el centro de monitoreo. Se detiene al marcar "Estoy a salvo".</div></div>
+      <div class="pi"><span class="e">📷</span><div><b>Fotos y descripciones</b> de tus reportes las verán la comunidad y las autoridades. No publiques datos de otras personas sin su permiso.</div></div>
+      <div class="pi"><span class="e">🚫</span><div><b>No vendemos ni compartimos tus datos</b> con fines comerciales. No necesitas cuenta, nombre ni número de teléfono.</div></div>
+      <details open><summary>Leer aviso de privacidad completo</summary>
+        <p><b>Responsable:</b> Consejo Coordinador Empresarial de Lázaro Cárdenas (prototipo HackaITLAC 2026).</p>
+        <p><b>Datos que se tratan:</b> ubicación aproximada del dispositivo (solo en el dispositivo), y en reportes: categoría, descripción, fotografía opcional, ubicación y hora. Se usa un identificador anónimo del dispositivo para evitar reportes duplicados.</p>
+        <p><b>Finalidades:</b> difundir alertas comunitarias por proximidad, validar reportes, coordinar la respuesta con autoridades y generar estadísticas anónimas de zonas de riesgo.</p>
+        <p><b>Conservación:</b> las alertas cerradas se conservan para estadística sin datos que identifiquen a quien reportó.</p>
+        <p><b>Tus derechos:</b> puedes acceder, rectificar, cancelar u oponerte al uso de tus datos (derechos ARCO) escribiendo a cce.lazarocardenas@gmail.com, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
+        <p><b>Cambiar tu decisión:</b> usa los ajustes de esta sección en cualquier momento.</p>
+      </details>
+      <div class="pvcard">
+        <h3>⚙️ Tus preferencias</h3>
+        <label class="pck"><input type="checkbox" id="pvLoc"><span><b>Permitir mi ubicación</b><small>Necesaria para avisarte de alertas cercanas y para reportar</small></span></label>
+        <label class="pck"><input type="checkbox" id="pvSnd"><span><b>Sonido y vibración en alertas</b><small>Como la alerta sísmica</small></span></label>
+        <button class="btn" id="pvSave">Guardar preferencias</button>
+        <button class="btn out" id="pvRevoke">Retirar mi consentimiento</button>
+      </div>
+    </section>
+
     <section class="view" id="view-panico">
       <div class="panic-wrap" id="panicIdle">
         <h2 class="t">Botón de pánico</h2>
@@ -190,6 +241,7 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
     <button data-v="alertas"><span class="e">🔔</span>Alertas<span class="cnt" id="navCnt" style="display:none">0</span></button>
     <button data-v="reportar"><span class="e">➕</span>Reportar</button>
     <button data-v="panico"><span class="e">🆘</span>Pánico</button>
+    <button data-v="privacidad"><span class="e">🔒</span>Privacidad</button>
   </nav>
 
   <div class="ov hidden" id="ov">
@@ -203,6 +255,33 @@ nav .cnt{position:absolute;top:4px;left:55%;background:var(--red);color:#fff;fon
       <div class="badges" id="ovB"></div>
       <button class="btn" id="ovVer">Ver detalles y mapa</button>
       <button class="btn sec" id="ovOk">Entendido</button>
+    </div>
+  </div>
+
+  <!-- ================= AVISO DE PRIVACIDAD ================= -->
+  <div class="priv hidden" id="priv" role="dialog" aria-modal="true" aria-labelledby="privT">
+    <div class="pbox">
+      <h2 id="privT">🔒 Tu privacidad</h2>
+      <p class="lead">Antes de empezar, esto es lo que ALERTA CERCA hace con tus datos:</p>
+      <div class="pi"><span class="e">📍</span><div><b>Tu ubicación se queda en tu celular.</b> La usamos solo para saber si una alerta está cerca de ti. Para recibir alertas no la enviamos al servidor.</div></div>
+      <div class="pi"><span class="e">📨</span><div><b>Solo se comparte cuando tú lo decides:</b> al hacer un reporte o activar el botón de pánico se envía la ubicación de ese momento.</div></div>
+      <div class="pi"><span class="e">🆘</span><div><b>Botón de pánico:</b> mientras está activo, tu ubicación en vivo se comparte con tus contactos y el centro de monitoreo. Se detiene al marcar "Estoy a salvo".</div></div>
+      <div class="pi"><span class="e">📷</span><div><b>Fotos y descripciones</b> de tus reportes las verán la comunidad y las autoridades. No publiques datos de otras personas sin su permiso.</div></div>
+      <div class="pi"><span class="e">🚫</span><div><b>No vendemos ni compartimos tus datos</b> con fines comerciales. No necesitas cuenta, nombre ni número de teléfono.</div></div>
+      <details><summary>Leer aviso de privacidad completo</summary>
+        <p><b>Responsable:</b> Consejo Coordinador Empresarial de Lázaro Cárdenas (prototipo HackaITLAC 2026).</p>
+        <p><b>Datos que se tratan:</b> ubicación aproximada del dispositivo (solo en el dispositivo), y en reportes: categoría, descripción, fotografía opcional, ubicación y hora. Se usa un identificador anónimo del dispositivo para evitar reportes duplicados.</p>
+        <p><b>Finalidades:</b> difundir alertas comunitarias por proximidad, validar reportes, coordinar la respuesta con autoridades y generar estadísticas anónimas de zonas de riesgo.</p>
+        <p><b>Conservación:</b> las alertas cerradas se conservan para estadística sin datos que identifiquen a quien reportó.</p>
+        <p><b>Tus derechos:</b> puedes acceder, rectificar, cancelar u oponerte al uso de tus datos (derechos ARCO) escribiendo a cce.lazarocardenas@gmail.com, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
+        <p><b>Cambiar tu decisión:</b> toca el candado 🔒 de arriba en cualquier momento.</p>
+      </details>
+      <label class="pck"><input type="checkbox" id="pcAcc"><span><b>He leído y acepto el aviso de privacidad</b><small>Obligatorio para usar la app</small></span></label>
+      <label class="pck"><input type="checkbox" id="pcLoc" checked><span><b>Permitir mi ubicación</b><small>Necesaria para avisarte de alertas cercanas y para reportar</small></span></label>
+      <label class="pck"><input type="checkbox" id="pcSnd" checked><span><b>Sonido y vibración en alertas</b><small>Como la alerta sísmica</small></span></label>
+      <div class="perr" id="pErr"></div>
+      <button class="btn" id="pOk">Aceptar y continuar</button>
+      <button class="btn out" id="pRevoke" style="display:none">Retirar mi consentimiento</button>
     </div>
   </div>
 
@@ -385,8 +464,10 @@ function initMap(){
 }
 function moveMe(p){me=p;if(meMarker)meMarker.setLatLng([p.lat,p.lng]);}
 initMap();
-if(navigator.geolocation){
-  navigator.geolocation.getCurrentPosition(p=>{moveMe({lat:p.coords.latitude,lng:p.coords.longitude});if(map)map.setView([me.lat,me.lng],14);$('locTxt').textContent='Ubicación activa · GPS';},()=>{},{timeout:6000});
+function startGeo(){
+  if(!navigator.geolocation){$('locTxt').textContent='Ubicación aproximada · Lázaro Cárdenas';return;}
+  navigator.geolocation.getCurrentPosition(p=>{moveMe({lat:p.coords.latitude,lng:p.coords.longitude});if(map)map.setView([me.lat,me.lng],14);$('locTxt').textContent='Ubicación activa · GPS';},
+    ()=>{$('locTxt').textContent='Ubicación aproximada · Lázaro Cárdenas';},{timeout:6000});
 }
 function pinIcon(a){const c=CATS[a.cat];return L.divIcon({className:'',html:`<div class="pin ${a.status!=='activa'?'closed':''}" style="background:${c.col}">${c.ic}</div>`,iconSize:[34,34],iconAnchor:[17,17]});}
 function draw(a){
@@ -561,11 +642,64 @@ function go(v){
   document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='view-'+v));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   if(v==='mapa'&&map)setTimeout(()=>map.invalidateSize(),50);
+  if(v==='privacidad'&&typeof renderPrivView==='function')renderPrivView();
   if(v==='reportar')$('repLoc').textContent=`📍 Se usará tu ubicación actual (${me.lat.toFixed(4)}, ${me.lng.toFixed(4)})`;
 }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
-refresh();
-initSync();
+/* ================= CONSENTIMIENTO DE PRIVACIDAD ================= */
+const PRIV_KEY='ac-privacidad-v1';
+function getConsent(){try{return JSON.parse(localStorage.getItem(PRIV_KEY)||'null');}catch(e){return null;}}
+let CONSENT=getConsent(),appStarted=false;
+function applyConsent(){
+  muted=!CONSENT.snd;$('muteBtn').textContent=muted?'🔇':'🔊';
+  $('locTxt').parentElement.querySelector('i').style.background='';
+  if(CONSENT.loc)startGeo();
+  else{$('locTxt').textContent='Ubicación desactivada';$('locTxt').parentElement.querySelector('i').style.background='#9ca3af';}
+}
+function openPriv(){
+  const c=getConsent();
+  $('pcAcc').checked=!!c;$('pcLoc').checked=c?!!c.loc:true;$('pcSnd').checked=c?!!c.snd:true;
+  $('pRevoke').style.display=c?'':'none';$('pOk').textContent=c?'Guardar cambios':'Aceptar y continuar';$('pErr').textContent='';
+  $('priv').classList.remove('hidden');
+}
+$('privBtn').onclick=()=>go('privacidad');
+$('pOk').onclick=()=>{
+  if(!$('pcAcc').checked){$('pErr').textContent='Debes aceptar el aviso de privacidad para usar la app.';return;}
+  CONSENT={acc:true,loc:$('pcLoc').checked,snd:$('pcSnd').checked,at:Date.now()};
+  try{localStorage.setItem(PRIV_KEY,JSON.stringify(CONSENT));}catch(e){}
+  $('priv').classList.add('hidden');applyConsent();
+  if(!appStarted){appStarted=true;refresh();initSync();toast(CONSENT.loc?'✅ Listo. Te avisaremos de alertas cerca de ti.':'✅ Listo. Sin ubicación verás las alertas, pero no sabremos cuáles están cerca de ti.');}
+  else toast('✅ Preferencias de privacidad guardadas.');
+};
+$('pRevoke').onclick=()=>{
+  if(!confirm('Se borrarán tus preferencias y dejarás de recibir alertas en este dispositivo. ¿Continuar?'))return;
+  try{localStorage.removeItem(PRIV_KEY);localStorage.removeItem('ac-dev');}catch(e){}
+  location.reload();
+};
+function renderPrivView(){
+  const c=getConsent();
+  $('pvLoc').checked=!!(c&&c.loc);$('pvSnd').checked=!!(c&&c.snd);
+  const st=$('pvStat');
+  if(!c){st.className='pvstat off';st.textContent='Aún no has aceptado el aviso de privacidad.';return;}
+  st.className='pvstat'+(c.loc?'':' off');
+  st.textContent=`✅ Aceptaste el aviso el ${new Date(c.at).toLocaleString('es-MX',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} · Ubicación ${c.loc?'permitida':'desactivada'} · Sonido ${c.snd?'activado':'desactivado'}`;
+}
+$('pvSave').onclick=()=>{
+  CONSENT={...(getConsent()||{acc:true}),acc:true,loc:$('pvLoc').checked,snd:$('pvSnd').checked,at:Date.now()};
+  try{localStorage.setItem(PRIV_KEY,JSON.stringify(CONSENT));}catch(e){}
+  applyConsent();renderPrivView();toast('✅ Preferencias de privacidad guardadas.');
+};
+$('pvRevoke').onclick=()=>$('pRevoke').onclick();
+/* Reportar y pánico necesitan ubicación: si el usuario la negó, se le pide de nuevo */
+function needLocation(){
+  if(CONSENT&&CONSENT.loc)return false;
+  toast('📍 Para esta función necesitas permitir tu ubicación. Actívala aquí en Privacidad.');go('privacidad');return true;
+}
+const _submit=$('repForm').onsubmit;$('repForm').onsubmit=e=>{if(needLocation()){e.preventDefault();return;}_submit(e);};
+pb.addEventListener('pointerdown',e=>{if(needLocation()){e.stopImmediatePropagation();}},true);
+
+if(CONSENT){appStarted=true;applyConsent();refresh();initSync();}
+else{refresh();openPriv();}
 </script>
 </body>
 </html>
