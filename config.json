@@ -1,0 +1,7 @@
+{
+  "torreIp": "192.168.3.151",
+  "torrePuerto": 8080,
+  "torreRuta": "/api/ecbe/v1/message",
+  "githubUrl": "",
+  "servidorPublico": ""
+}

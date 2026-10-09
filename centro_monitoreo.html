@@ -34,6 +34,31 @@ header{background:#14161a;color:#fff;position:sticky;top:0;z-index:1500}
 .cfg label{font-size:12px;color:var(--mut);font-weight:600;display:flex;flex-direction:column;gap:4px}
 .cfg input{padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;color:var(--tx)}
 #ghBox+div,.cfg+.cfg{margin-top:8px}
+.login{position:fixed;inset:0;z-index:5000;background:#14161a;display:flex;align-items:center;justify-content:center;padding:20px}
+.login.hidden{display:none}
+.lbox{background:#fff;border-radius:20px;padding:30px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.lbox .logo{color:var(--tx);font-size:24px;text-align:center}
+.lbox .sub{text-align:center;margin:4px 0 22px;color:var(--mut)}
+.lbox label{display:block;font-size:12px;font-weight:700;color:#374151;margin:12px 0 5px}
+.lbox input{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:10px;font-size:15px}
+.lbox input:focus{outline:2px solid var(--org);border-color:transparent}
+.lbox .btn{width:100%;padding:13px;font-size:15px;margin-top:18px}
+.lerr{color:var(--red);font-size:13px;font-weight:600;margin-top:10px;min-height:18px}
+.lbox details{margin-top:16px;font-size:12px;color:var(--mut)}
+.lbox details code{background:#f3f4f6;padding:2px 5px;border-radius:4px}
+body.locked header,body.locked main{visibility:hidden}
+.user{display:flex;align-items:center;gap:8px;font-size:12px;color:#e5e7eb;background:#22252b;border-radius:10px;padding:5px 6px 5px 10px}
+.user b{font-weight:700}.user small{color:#9ca3af}
+.user button{background:#3a3d45;color:#fff;border:0;border-radius:7px;padding:5px 9px;font-size:12px;font-weight:700}
+.sendf label{display:block;font-size:12px;font-weight:700;color:#374151;margin:12px 0 5px}
+.sendf select,.sendf textarea,.sendf input[type=text]{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;font:inherit}
+.sendf textarea{min-height:80px;resize:vertical}
+.sendf .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sendf .chk{display:flex;gap:8px;align-items:center;font-size:13px;margin-top:12px;font-weight:600}
+.pickloc{background:#eef6ff;color:#1e40af;border-radius:10px;padding:9px 12px;font-size:13px;margin-top:8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.map.picking{cursor:crosshair;outline:3px solid var(--org)}
+.pickbar{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:2700;background:#14161a;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:700;display:none;gap:10px;align-items:center}
+.pickbar.on{display:flex}
 pre.json{background:#14161a;color:#a7f3c0;border-radius:10px;padding:12px;font-size:11px;overflow-x:auto;max-height:320px;margin-top:8px}
 details summary{cursor:pointer;font-weight:700;font-size:13px;margin-top:10px}
 .bdg.tw{background:#e0e7ff;color:#3730a3}.bdg.twe{background:#fee2e2;color:#991b1b}
@@ -143,7 +168,25 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
 @media(max-width:960px){.g2,.g2e{grid-template-columns:1fr}.map{height:380px}.hb{grid-template-columns:110px 1fr 34px}.hours div{font-size:0}}
 </style>
 </head>
-<body>
+<body class="locked">
+<!-- ================= LOGIN ================= -->
+<div class="login" id="login">
+  <form class="lbox" id="loginForm" autocomplete="on">
+    <div class="logo">ALERTA <span>CERCA</span></div>
+    <div class="sub">Centro de monitoreo · Acceso restringido</div>
+    <label for="lu">Usuario</label>
+    <input id="lu" name="username" autocomplete="username" required autofocus>
+    <label for="lp">Contraseña</label>
+    <input id="lp" name="password" type="password" autocomplete="current-password" required>
+    <button class="btn" type="submit" id="lbtn">🔒 Iniciar sesión</button>
+    <div class="lerr" id="lerr"></div>
+    <details><summary>Credenciales de demostración</summary>
+      <p style="margin-top:6px">Operador: <code>operador</code> / <code>alerta2026</code><br>
+      Supervisor: <code>supervisor</code> / <code>cce2026</code><br>
+      Protección Civil: <code>pcivil</code> / <code>pc2026</code></p>
+    </details>
+  </form>
+</div>
 <header>
   <div class="hbar">
     <div><div class="logo">ALERTA <span>CERCA</span></div><div class="sub">Centro de monitoreo · Lázaro Cárdenas</div></div>
@@ -155,6 +198,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <div class="hright">
       <span class="demo" title="El historial de 90 días es simulado; las alertas en vivo vienen de la app">HISTORIAL DE DEMOSTRACIÓN</span>
       <label class="sw"><input type="checkbox" id="simTg"> Auto-simular</label>
+      <span class="user" id="userBox" style="display:none"><span>👤 <b id="userName"></b> <small id="userRole"></small></span><button id="logoutBtn" title="Cerrar sesión">Salir</button></span>
       <button class="btn sm" id="phoneBtn" style="display:none">📱 Conectar celular</button>
       <button class="btn sm sec" id="resetBtn" style="display:none">↺ Reiniciar</button>
       <span class="demo" id="towerTag" style="display:none;background:#0c2d48;color:#93c5fd"></span>
@@ -171,7 +215,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <div class="g2">
       <div class="panel">
         <div class="ph"><div><h3>Mapa de alertas activas</h3><div class="s">Círculo = radio de cobertura actual (crece si la alerta no se resuelve)</div></div>
-          <div style="display:flex;gap:8px;align-items:center"><label class="sw" style="color:var(--mut)"><input type="checkbox" id="heatTg"> Zonas de calor (30 días)</label><button class="btn sm" id="simBtn">⚡ Simular alerta</button></div></div>
+          <div style="display:flex;gap:8px;align-items:center"><label class="sw" style="color:var(--mut)"><input type="checkbox" id="heatTg"> Zonas de calor (30 días)</label><button class="btn sm" id="simBtn">📢 Mandar alerta</button></div></div>
         <div class="map" id="liveMap"></div>
       </div>
       <div class="panel">
@@ -279,6 +323,24 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     </div>
     <div id="cfgMsg" style="font-size:13px;margin-top:8px"></div>
   </div>
+</div>
+<div class="pickbar" id="pickbar">📍 Haz clic en el mapa donde ocurre el acontecimiento <button class="btn sm sec" id="pickCancel">Cancelar</button></div>
+<div class="modal" id="sendModal" onclick="if(event.target===this)closeSend()">
+  <form class="mbox sendf" id="sendForm">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="font-size:19px">📢 Mandar alerta</h3><button type="button" class="btn out sm" onclick="closeSend()">✕</button></div>
+    <p style="font-size:13px;color:var(--mut);margin-top:4px">Se enviará a las apps cercanas y a la torre celular.</p>
+    <label>Tipo de acontecimiento</label>
+    <select id="sCat" required></select>
+    <div class="row2">
+      <div><label>Zona</label><select id="sZone"></select></div>
+      <div><label>Fuente</label><select id="sSrc"><option>Centro de monitoreo</option><option>Protección Civil</option><option>Seguridad Pública Mpal.</option></select></div>
+    </div>
+    <div class="pickloc"><span id="sLocTxt"></span><button type="button" class="btn sm sec" id="sPick">📍 Elegir en el mapa</button></div>
+    <label>Descripción</label>
+    <textarea id="sDesc" required placeholder="Características, ubicación exacta, indicaciones para la población…"></textarea>
+    <label class="chk"><input type="checkbox" id="sVer" checked> Alerta oficial verificada</label>
+    <button class="btn" type="submit" style="width:100%;margin-top:16px;padding:12px">📢 Mandar alerta</button>
+  </form>
 </div>
 <div class="shade" id="shade"></div>
 <aside class="drawer" id="drawer"></aside>
@@ -467,7 +529,8 @@ function renderCats(){
 }
 function act(id,what){
   const m={verificar:'verify',cerrar:'resolve',retirar:'retire'}[what];
-  send(`alerts/${id}/${m}`,{by:'Operador C-ALERTA'});
+  send(`alerts/${id}/${m}`,{by:opLabel()});
+  const a=DATA.find(x=>x.id===id);log(`👤 ${esc(SESSION?SESSION.name:'Operador')}: ${{verificar:'verificó',cerrar:'cerró',retirar:'retiró'}[what]} ${id}${a?' ('+CATS[a.cat].n+')':''}`);
 }
 
 /* ================= SIMULACIÓN EN VIVO ================= */
@@ -479,7 +542,38 @@ function simulate(){
   send('alerts',{cat,lat:p.lat,lng:p.lng,verified:ver,speed:90,owner:'monitor',origin:'monitor',
     src:cat==='panico'?'Usuario (botón de pánico)':ver?(CATS[cat].g==='desastres'?'Protección Civil':'Seguridad Pública Mpal.'):'Reporte ciudadano'});
 }
-$('simBtn').onclick=simulate;
+/* ---------- Mandar alerta (operador) ---------- */
+let sendLoc=null;
+$('sCat').innerHTML=Object.keys(CATS).filter(k=>k!=='panico').map(k=>`<option value="${k}">${CATS[k].ic} ${CATS[k].n} · ${CATS[k].lvl}</option>`).join('');
+$('sZone').innerHTML=ZONES.map(z=>`<option value="${z.id}">${z.n}</option>`).join('');
+const DESC={menor:'Menor desaparecido. Describa edad, ropa y último lugar donde fue visto.',adulto:'Adulto mayor extraviado. Describa edad, ropa y condición de salud.',vehiculo:'Vehículo robado. Marca, color, placas y dirección de huida.',casa:'Robo a casa o comercio. Describa a los responsables y hacia dónde huyeron.',asalto:'Asalto o situación de riesgo. Evite la zona.',incendio:'Incendio. Evite la zona, cierre ventanas y siga indicaciones de Protección Civil.',inundacion:'Inundación. No cruce calles con corriente de agua.',accidente:'Accidente vial. Tome vías alternas.'};
+function setSendLoc(p,label){sendLoc=p;$('sLocTxt').innerHTML=`📍 ${esc(label)} <small style="color:var(--mut)">(${p.lat.toFixed(4)}, ${p.lng.toFixed(4)})</small>`;}
+function zoneLoc(){const z=zoneById($('sZone').value);setSendLoc(offset(z.c,Math.random()*0.4,Math.random()*360),z.n);}
+$('sZone').onchange=zoneLoc;
+$('sCat').onchange=()=>{if(!$('sDesc').dataset.edited)$('sDesc').value=DESC[$('sCat').value]||'';};
+$('sDesc').oninput=()=>$('sDesc').dataset.edited='1';
+function openSend(){
+  if(!$('sendModal').classList.contains('on')&&!sendLoc){$('sDesc').dataset.edited='';$('sDesc').value=DESC[$('sCat').value]||'';zoneLoc();}
+  $('sendModal').classList.add('on');
+}
+function closeSend(){$('sendModal').classList.remove('on');}
+$('simBtn').onclick=()=>{sendLoc=null;$('sendForm').reset();openSend();};
+$('sPick').onclick=()=>{
+  if(!liveMap){toast('El mapa no está disponible (necesita internet).');return;}
+  closeSend();$('pickbar').classList.add('on');$('liveMap').classList.add('picking');
+  document.querySelector('.tabs button[data-v="vivo"]').click();
+  liveMap.once('click',e=>{endPick();setSendLoc({lat:e.latlng.lat,lng:e.latlng.lng},'Punto elegido en el mapa · '+nearestZone({lat:e.latlng.lat,lng:e.latlng.lng}).n);$('sendModal').classList.add('on');});
+};
+function endPick(){$('pickbar').classList.remove('on');$('liveMap').classList.remove('picking');}
+$('pickCancel').onclick=()=>{if(liveMap)liveMap.off('click');endPick();$('sendModal').classList.add('on');};
+$('sendForm').onsubmit=e=>{
+  e.preventDefault();
+  const cat=$('sCat').value,desc=$('sDesc').value.trim(),ver=$('sVer').checked;
+  if(!sendLoc)zoneLoc();
+  send('alerts',{cat,lat:sendLoc.lat,lng:sendLoc.lng,verified:ver,speed:90,owner:'monitor',origin:'monitor',src:ver?$('sSrc').value:'Centro de monitoreo (sin verificar)',desc});
+  log(`👤 ${esc(SESSION?SESSION.name:'Operador')} mandó una alerta: ${CATS[cat].n}`);
+  closeSend();sendLoc=null;toast('📢 Enviando alerta a las apps y a la torre…');
+};
 setInterval(()=>{if($('simTg').checked)simulate();},20000);
 
 /* ================= SINCRONIZACIÓN =================
@@ -769,9 +863,41 @@ setInterval(()=>{const before=DATA.filter(a=>a.status==='activa').map(a=>a.ri).j
   if(openId)renderDrawer();},5000);
 setInterval(renderFeed,30000);
 initLiveMap();
+/* ================= LOGIN (simulado) =================
+   Para la demo los usuarios viven aquí (con la contraseña cifrada como hash).
+   En producción esto se valida en el servidor contra una base de datos. */
+const USERS={
+  operador:{name:'María López',role:'Operador C-ALERTA',h:'ddec5270'},
+  supervisor:{name:'Julio C. Cortés',role:'Supervisor CCE',h:'f990ae60'},
+  pcivil:{name:'Ing. Ramírez',role:'Protección Civil',h:'01ede750'}
+};
+function hash(str){let h1=0xdeadbeef,h2=0x41c6ce57;for(let i=0;i<str.length;i++){const c=str.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);return(h1>>>0).toString(16).padStart(8,'0');}
+let SESSION=null,started=false,fails=0,lockUntil=0;
+function opLabel(){return SESSION?`${SESSION.name} (${SESSION.role})`:'Operador';}
+function loadSession(){try{const s=JSON.parse(sessionStorage.getItem('ac-op')||'null');if(s&&s.exp>Date.now()&&USERS[s.user])return s;}catch(e){}return null;}
+function showApp(){
+  document.body.classList.remove('locked');$('login').classList.add('hidden');
+  $('userBox').style.display='';$('userName').textContent=SESSION.name;$('userRole').textContent='· '+SESSION.role;
+  if(!started){started=true;log(`🔐 Sesión iniciada: ${esc(SESSION.name)} (${esc(SESSION.role)})`);refreshAll();initSync();if(liveMap)setTimeout(()=>liveMap.invalidateSize(),80);}
+}
+$('loginForm').onsubmit=e=>{
+  e.preventDefault();
+  if(Date.now()<lockUntil){$('lerr').textContent=`Demasiados intentos. Espera ${Math.ceil((lockUntil-Date.now())/1000)} s.`;return;}
+  const u=$('lu').value.trim().toLowerCase(),pw=$('lp').value,usr=USERS[u];
+  if(usr&&hash(u+':'+pw)===usr.h){
+    fails=0;SESSION={user:u,name:usr.name,role:usr.role,exp:Date.now()+8*3600000};
+    try{sessionStorage.setItem('ac-op',JSON.stringify(SESSION));}catch(err){}
+    $('lp').value='';$('lerr').textContent='';showApp();
+  }else{
+    fails++;$('lp').value='';$('lp').focus();
+    if(fails>=5){lockUntil=Date.now()+30000;fails=0;$('lerr').textContent='Demasiados intentos. Acceso bloqueado 30 segundos.';}
+    else $('lerr').textContent=`Usuario o contraseña incorrectos (${fails}/5).`;
+  }
+};
+$('logoutBtn').onclick=()=>{if(!confirm('¿Cerrar sesión?'))return;try{sessionStorage.removeItem('ac-op');}catch(e){}location.reload();};
 log('Sistema iniciado');
-refreshAll();
-initSync();
+SESSION=loadSession();
+if(SESSION)showApp();
 </script>
 </body>
 </html>
