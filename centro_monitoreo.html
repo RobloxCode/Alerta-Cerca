@@ -49,7 +49,9 @@ header{background:#14161a;color:#fff;position:sticky;top:0;z-index:1500}
 body.locked header,body.locked main{visibility:hidden}
 .user{display:flex;align-items:center;gap:8px;font-size:12px;color:#e5e7eb;background:#22252b;border-radius:10px;padding:5px 6px 5px 10px}
 .user b{font-weight:700}.user small{color:#9ca3af}
-.user button{background:#3a3d45;color:#fff;border:0;border-radius:7px;padding:5px 9px;font-size:12px;font-weight:700}
+.user button{background:#7f1d1d;color:#fecaca;border:0;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:5px}
+.user button:hover{background:#991b1b;color:#fff}
+.lok{color:var(--ok);font-size:13px;font-weight:600;margin-top:10px;text-align:center}
 .sendf label{display:block;font-size:12px;font-weight:700;color:#374151;margin:12px 0 5px}
 .sendf select,.sendf textarea,.sendf input[type=text]{width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;font:inherit}
 .sendf textarea{min-height:80px;resize:vertical}
@@ -180,6 +182,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <input id="lp" name="password" type="password" autocomplete="current-password" required>
     <button class="btn" type="submit" id="lbtn">🔒 Iniciar sesión</button>
     <div class="lerr" id="lerr"></div>
+    <div class="lok" id="lok"></div>
     <details><summary>Credenciales de demostración</summary>
       <p style="margin-top:6px">Operador: <code>operador</code> / <code>alerta2026</code><br>
       Supervisor: <code>supervisor</code> / <code>cce2026</code><br>
@@ -198,7 +201,7 @@ tbody tr{cursor:pointer}tbody tr:hover{background:#fafafa}
     <div class="hright">
       <span class="demo" title="El historial de 90 días es simulado; las alertas en vivo vienen de la app">HISTORIAL DE DEMOSTRACIÓN</span>
       <label class="sw"><input type="checkbox" id="simTg"> Auto-simular</label>
-      <span class="user" id="userBox" style="display:none"><span>👤 <b id="userName"></b> <small id="userRole"></small></span><button id="logoutBtn" title="Cerrar sesión">Salir</button></span>
+      <span class="user" id="userBox" style="display:none"><span>👤 <b id="userName"></b> <small id="userRole"></small></span><button id="logoutBtn" title="Cerrar sesión y volver al inicio de sesión">🚪 Cerrar sesión</button></span>
       <button class="btn sm" id="phoneBtn" style="display:none">📱 Conectar celular</button>
       <button class="btn sm sec" id="resetBtn" style="display:none">↺ Reiniciar</button>
       <span class="demo" id="towerTag" style="display:none;background:#0c2d48;color:#93c5fd"></span>
@@ -915,7 +918,12 @@ $('loginForm').onsubmit=e=>{
     else $('lerr').textContent=`Usuario o contraseña incorrectos (${fails}/5).`;
   }
 };
-$('logoutBtn').onclick=()=>{if(!confirm('¿Cerrar sesión?'))return;try{sessionStorage.removeItem('ac-op');}catch(e){}location.reload();};
+$('logoutBtn').onclick=()=>{
+  if(!confirm(`¿Cerrar la sesión de ${SESSION?SESSION.name:'este operador'}?`))return;
+  try{sessionStorage.removeItem('ac-op');sessionStorage.setItem('ac-bye',SESSION?SESSION.name:'');}catch(e){}
+  location.reload();
+};
+try{const bye=sessionStorage.getItem('ac-bye');if(bye!==null){sessionStorage.removeItem('ac-bye');$('lok').textContent=`✅ Sesión cerrada${bye?' ('+bye+')':''}. Inicia sesión para continuar.`;}}catch(e){}
 log('Sistema iniciado');
 SESSION=loadSession();
 if(SESSION)showApp();
