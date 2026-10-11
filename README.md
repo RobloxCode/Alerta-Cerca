@@ -126,7 +126,7 @@ node server.js 192.168.3.200    # cambia la IP de la torre y la guarda
 - Monitoreo: `http://localhost:3000`
 - App: `http://IP-DE-LA-PC:3000/app`, o desde el QR en **Conectar celular**
 
-La IP de la torre también se cambia desde el monitoreo: **Conectar celular → ⚙️ Torre → Guardar IP**.
+La IP de la torre también se cambia desde el monitoreo: **Conectar celular → Torre → Guardar IP**.
 
 ## App desde GitHub Pages
 GitHub Pages es HTTPS, y el navegador no deja que una página HTTPS hable con un servidor `http://`. Por eso el servidor necesita una dirección HTTPS mediante un túnel gratuito:
